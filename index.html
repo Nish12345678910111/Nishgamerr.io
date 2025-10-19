@@ -963,6 +963,503 @@ async function subscribeRealtime(){
   }
 }
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chat — Supabase Realtime</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+<style>
+  :root {
+    --bg-primary: #0b1220;
+    --bg-secondary: #1a2338;
+    --bg-chat: #071127;
+    --text-primary: #e6eef8;
+    --text-secondary: #94a3b8;
+    --accent-blue: #60a5fa;
+    --accent-blue-hover: #3b82f6;
+    --error: #fb7185;
+    --success: #16a34a;
+    --offline: #dc2626;
+    --border: #1f2937;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --gradient: linear-gradient(135deg, #60a5fa, #2563eb);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 800px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  h1 {
+    text-align: center;
+    color: var(--accent-blue);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .username-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  #currentUsername {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  #username {
+    background: var(--bg-chat);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  #username:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+  }
+
+  #saveName {
+    padding: 10px 16px;
+    background: var(--gradient);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  #saveName:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+  }
+
+  #nameMsg {
+    color: var(--error);
+    font-size: 0.9rem;
+    margin-top: 6px;
+    min-height: 1.2em;
+    transition: opacity 0.3s;
+  }
+
+  .theme-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  #chat {
+    background: var(--bg-chat);
+    border-radius: 12px;
+    padding: 16px;
+    height: 500px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    scroll-behavior: smooth;
+  }
+
+  .message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease-in;
+  }
+  .message.pending {
+    opacity: 0.6;
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .message.pending::after {
+    content: ' ⏳';
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .username {
+    color: var(--accent-blue);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .text {
+    flex: 1;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .ts {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  #controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  #messageInput {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg-chat);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  #messageInput:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+  }
+
+  #sendBtn {
+    padding: 12px 20px;
+    background: var(--gradient);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  #sendBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+  }
+
+  #status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: transform 0.3s, opacity 0.3s;
+    box-shadow: var(--shadow);
+  }
+  .online {
+    background: var(--success);
+    color: white;
+    animation: pulse 2s infinite;
+  }
+  .offline {
+    background: var(--offline);
+    color: white;
+  }
+
+  #errorBox {
+    margin-top: 12px;
+    color: var(--error);
+    font-size: 0.9rem;
+    min-height: 1.2em;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .wrap { padding: 16px; }
+    h1 { font-size: 1.5rem; }
+    #chat { height: 400px; }
+    .top { flex-direction: column; align-items: flex-start; }
+    #username { width: 100%; }
+    #saveName { width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div id="status" class="offline">Offline</div>
+
+  <div class="wrap">
+    <h1>Modern Chat App</h1>
+
+    <div class="top">
+      <div class="username-section">
+        <span id="currentUsername">Username: Guest</span>
+        <input id="username" placeholder="Enter username" />
+        <button id="saveName">Save Username</button>
+        <div id="nameMsg"></div>
+      </div>
+      <div class="theme-info">Dark • Realtime</div>
+    </div>
+
+    <div id="chat" role="log" aria-live="polite"></div>
+
+    <div id="controls">
+      <input id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+
+    <div id="errorBox"></div>
+  </div>
+
+<script type="module">
+/* ========= CONFIG ========= */
+const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
+
+// Optional Firebase config for closed-browser push
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "24163130777",
+  appId: ""
+};
+const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
+
+/* ================= END CONFIG ================= */
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 10000 } });
+
+/* DOM */
+const chatEl = document.getElementById('chat');
+const usernameEl = document.getElementById('username');
+const saveNameBtn = document.getElementById('saveName');
+const nameMsgEl = document.getElementById('nameMsg');
+const currentUsernameLabel = document.getElementById('currentUsername');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const statusEl = document.getElementById('status');
+const errorBox = document.getElementById('errorBox');
+
+/* STATE */
+let currentUsername = localStorage.getItem('chatUsername') || '';
+let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
+let pollTimer = null;
+let realtimeSubscribed = false;
+
+/* Network UI */
+function updateNetworkUI(){
+  const online = navigator.onLine;
+  statusEl.textContent = online ? 'Online' : 'Offline';
+  statusEl.className = online ? 'online' : 'offline';
+  if(online) resendPending();
+}
+window.addEventListener('online', updateNetworkUI);
+window.addEventListener('offline', updateNetworkUI);
+updateNetworkUI();
+
+/* Helpers */
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function fmtTime(ts){
+  if(!ts) return '??:??';
+  const d = new Date(ts);
+  if(isNaN(d)) return '??:??';
+  return d.toLocaleString(undefined, { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
+function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=>nameMsgEl.textContent='', 2200); }
+
+/* Display row (safe for message=text or message field) */
+function displayMessageRow(row, { pending=false } = {}){
+  const username = row.username ?? row.user ?? 'Unknown';
+  const message = row.message ?? row.text ?? '';
+  const created_at = row.created_at ?? row.createdAt ?? new Date().toISOString();
+  const div = document.createElement('div');
+  div.className = 'message' + (pending ? ' pending' : '');
+  div.innerHTML = `<span class="username">${escapeHtml(username)}</span>
+                   <span class="text">${escapeHtml(message)}</span>
+                   <span class="ts">[${fmtTime(created_at)}]</span>`;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+/* Pending queue local */
+const PENDING_KEY = 'chat_pending_v1';
+function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
+function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
+function removePendingItem(m){ const a=getPending(); const remaining=a.filter(x=>JSON.stringify(x)!==JSON.stringify(m)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
+async function resendPending(){
+  const arr = getPending();
+  if(!arr.length) return;
+  for(const p of [...arr]){
+    try {
+      const { error } = await supabase.from('messages').insert([p]);
+      if(!error) removePendingItem(p);
+    } catch(e){ console.error('resend error', e); showError('Failed to resend pending message'); }
+  }
+}
+
+/* Load messages from DB */
+async function loadMessages(){
+  try {
+    const { data, error } = await supabase.from('messages').select().order('created_at', { ascending: true }).limit(50);
+    if(error){
+      console.error('load error', error);
+      showError('Failed to load messages — check key/RLS.');
+      return;
+    }
+    chatEl.innerHTML = '';
+    data.forEach(r => displayMessageRow(r));
+    getPending().forEach(p => displayMessageRow(p, { pending: true }));
+  } catch(e){
+    console.error('unexpected load error', e);
+    showError('Unexpected load error — check console.');
+  }
+}
+
+/* Send message */
+async function sendMessage(){
+  const txt = messageInput.value.trim();
+  if(!txt) return;
+  if(!currentUsername){ flashNameMsg('Set username first'); return; }
+
+  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+  displayMessageRow(row, { pending: !navigator.onLine });
+  messageInput.value = '';
+
+  if(!navigator.onLine){
+    addPending(row);
+    return;
+  }
+  try {
+    const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
+    if(error) {
+      console.error('insert error', error);
+      addPending(row);
+      showError('Send failed; queued locally.');
+    }
+  } catch(e){
+    console.error('send exception', e);
+    addPending(row);
+    showError('Send exception; queued locally.');
+  }
+}
+
+/* Username logic */
+async function isUsernameTakenInDB(name){
+  try {
+    const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
+    if(error){ console.error('username check error', error); return true; }
+    return (data && data.length > 0);
+  } catch(e){ console.error(e); return true; }
+}
+
+saveNameBtn.addEventListener('click', async () => {
+  const name = usernameEl.value.trim();
+  if(!name){ flashNameMsg('Enter a username'); return; }
+  if(oldUsernames.includes(name)){
+    currentUsername = name;
+    localStorage.setItem('chatUsername', currentUsername);
+    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+    flashNameMsg('Switched to saved username');
+    return;
+  }
+  const taken = await isUsernameTakenInDB(name);
+  if(taken){
+    flashNameMsg('Username already taken');
+    usernameEl.value = currentUsername || '';
+    return;
+  }
+  currentUsername = name;
+  localStorage.setItem('chatUsername', currentUsername);
+  if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+  flashNameMsg('Username saved');
+});
+
+/* Initialize UI username state */
+if(currentUsername){
+  usernameEl.value = currentUsername;
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+}
+
+/* Realtime subscription */
+async function subscribeRealtime(){
+  try {
+    supabase.removeAllChannels();
+    await supabase.channel('realtime-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        displayMessageRow(payload.new);
+        if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
+          if(navigator.serviceWorker && navigator.serviceWorker.controller){
+            navigator.serviceWorker.controller.postMessage({ type: 'notify', title: `New: ${payload.new.username}`, body: payload.new.message ?? payload.new.text ?? '' });
+          } else {
+            new Notification(`New: ${payload.new.username}`, { body: payload.new.message ?? payload.new.text ?? '' });
+          }
+        }
+      })
+      .subscribe((status) => {
+        if(status === 'SUBSCRIBED') {
+          realtimeSubscribed = true;
+          clearInterval(pollTimer); // Stop polling if Realtime is active
+        } else {
+          realtimeSubscribed = false;
+          startPolling(); // Fallback if subscription fails
+        }
+      });
+  } catch(e){
+    console.error('subscribe error', e);
+    showError('Realtime subscribe failed — using polling.');
+    realtimeSubscribed = false;
+    startPolling();
+  }
+}
+
 /* Poll fallback */
 function startPolling(){
   if(pollTimer) clearInterval(pollTimer);
@@ -1024,25 +1521,7 @@ async function ensureNotificationPermission(){
 })();
 </script>
 </body>
-</html>= 'granted') { try { await Notification.requestPermission(); } catch(e){console.warn(e);} } }
-
-/* Init */
-(async function init(){
-  await registerBlobSW();
-  await ensureNotificationPermission();
-  await loadMessages();
-  await subscribeRealtime();
-  startPolling();
-
-  // wire UI
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
-
-  // resend pending on online
-  window.addEventListener('online', resendPending);
-})();
-
-/* ===== Helpful debug SQL to run in Supabase SQL editor (run once) =====
+</html> SQL editor (run once) =====
 -- 1) create messages table (run this in Supabase SQL Editor)
 create table if not exists public.messages (
   id bigint generated always as identity primary key,
