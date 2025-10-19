@@ -268,7 +268,12 @@
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { 
+  realtime: { 
+    timeout: 15000,
+    params: { eventsPerSecond: 100 } // Optimize for high-frequency updates
+  } 
+});
 
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
@@ -389,7 +394,7 @@ if (currentUsername) {
 
 async function subscribeRealtime() {
   try {
-    await supabase.channel('realtime-messages')
+    await supabase.channel('realtime-messages', { config: { broadcast: { ack: true } } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         const newMsg = payload.new;
         if (lastSentMessage && 
