@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — by Nishgamer and riyaansh</title>
+<title>Chat — Supabase Realtime (Delete enabled)</title>
 
 <!-- Supabase client -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
@@ -23,9 +23,13 @@
   #username{background:var(--input); color:var(--text); border:1px solid var(--border); padding:8px 10px; border-radius:6px; width:220px}
   #saveName{background:var(--btn); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer}
   #chat{background:var(--panel); border-radius:8px; padding:12px; height:440px; overflow:auto; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:8px; display:flex; flex-direction:column;}
-  .message{margin-bottom:10px; display:flex; gap:8px; align-items:baseline;}
+  .message{margin-bottom:10px; display:flex; gap:8px; align-items:center; justify-content:space-between;}
+  .msgContent{display:flex; gap:8px; align-items:baseline; flex:1;}
   .username{color:var(--accent); font-weight:700; flex-shrink:0;}
-  .ts{color:var(--muted); font-size:.8rem; flex-shrink:0;}
+  .text{flex:1; word-break:break-word;}
+  .ts{color:var(--muted); font-size:.8rem; margin-left:8px; flex-shrink:0; white-space:nowrap;}
+  .delBtn{background:transparent;color:var(--err);border:none;cursor:pointer;font-size:.85rem;padding:6px 8px;border-radius:6px;}
+  .delBtn:hover{background:rgba(255,0,0,0.06);}
   #controls{display:flex; gap:8px; align-items:center; margin-top:6px;}
   #messageInput{flex:1; padding:8px 10px; border-radius:8px; background:var(--input); color:var(--text); border:1px solid var(--border); max-height:40px;}
   #sendBtn{padding:8px 12px; background:var(--btn); color:white; border:none; border-radius:8px; cursor:pointer;}
@@ -34,9 +38,8 @@
   #status{position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:8px; font-weight:700; box-shadow:var(--shadow);}
   .online{background:var(--ok); color:#052e0b;} .offline{background:#dc2626; color:#2b0202;}
   #errorBox{margin-top:8px; color:var(--err); min-height:1.2em;}
-  /* MOBILE tweak: make chat box shorter so input + send are visible without extra scroll */
   @media (max-width: 600px) {
-    #chat { height: 280px; } /* reduced from 440 to 280 on mobile */
+    #chat { height: 280px; }
     body { padding:16px; }
     #username { width:100%; max-width:220px; margin-top:6px; }
     .top { flex-direction: column; align-items:flex-start; gap:8px; }
@@ -62,7 +65,6 @@
 
     <div id="chat" role="log" aria-live="polite"></div>
 
-    <!-- controls sit below chat (short input & send) -->
     <div id="controls">
       <input id="messageInput" placeholder="Type a message" autocomplete="off" />
       <button id="sendBtn">Send</button>
@@ -72,17 +74,15 @@
   </div>
 
 <script type="module">
-/* ----------------------------
-   CONFIG - only change values
-   ---------------------------- */
+/* ---------------------
+   CONFIG (only change these)
+   --------------------- */
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-/* Optional FCM: fill if you will enable closed-browser push */
+/* Optional FCM support: fill to enable closed-browser push (see comments below) */
 const firebaseConfig = { apiKey: "", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"24163130777", appId:"" };
 const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
-/* ----------------------------
-   END CONFIG
-   ---------------------------- */
+/* --------------------- */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
@@ -101,10 +101,9 @@ const errorBox = document.getElementById('errorBox');
 /* STATE */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-const PENDING_KEY = 'chat_pending_v4';
-let pollTimer = null;
+const PENDING_KEY = 'chat_pending_v_del_v1';
 
-/* Network UI */
+/* NETWORK UI */
 function updateNetworkUI(){
   const online = navigator.onLine;
   statusEl.textContent = online ? 'Online' : 'Offline';
@@ -115,82 +114,143 @@ window.addEventListener('online', updateNetworkUI);
 window.addEventListener('offline', updateNetworkUI);
 updateNetworkUI();
 
-/* Utils */
+/* HELPERS */
 function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function formatTimestamp(ts){
-  if(!ts) return '??:??';
-  const d = new Date(ts);
-  if(isNaN(d.getTime())) return '??:??';
-  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+function fmtTime(ts){ if(!ts) return '??:??'; const d=new Date(ts); if(isNaN(d)) return '??:??'; return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }); }
+function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
+function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent='', 2200); }
+
+/* PENDING QUEUE */
+function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
+function savePending(arr){ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
+function addPending(obj){ const a=getPending(); a.push(obj); savePending(a); }
+function removePending(obj){ const a=getPending().filter(x => JSON.stringify(x) !== JSON.stringify(obj)); savePending(a); }
+
+/* CREATE element for a message row (DB row or pending object).
+   If dbRow has id, include data-id. If the message belongs to currentUsername, show delete button.
+   pending parameter true => message from pending queue (no DB id), delete removes from pending.
+*/
+function createMessageElement(dbRow, { pending=false } = {}){
+  const username = dbRow.username ?? dbRow.user ?? 'Unknown';
+  const message = dbRow.message ?? dbRow.text ?? '';
+  const created_at = dbRow.created_at ?? dbRow.createdAt ?? new Date().toISOString();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message' + (pending ? ' pending' : '');
+  // left content
+  const content = document.createElement('div');
+  content.className = 'msgContent';
+  content.innerHTML = `<span class="username">${escapeHtml(username)}</span>
+                       <span class="text">${escapeHtml(message)}</span>
+                       <span class="ts">[${fmtTime(created_at)}]</span>`;
+  wrapper.appendChild(content);
+
+  // delete button only for messages sent by current user (or pending messages we created)
+  const owned = (currentUsername && username === currentUsername);
+  if(owned){
+    const btn = document.createElement('button');
+    btn.className = 'delBtn';
+    btn.textContent = 'Delete';
+    btn.title = 'Delete this message';
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      // confirm quick
+      if(!confirm('Delete this message?')) return;
+      // if pending, remove from pending queue only
+      if(pending){
+        removePending(dbRow);
+        // remove from UI
+        wrapper.remove();
+        return;
+      }
+      // if db row, must have id to delete
+      const id = dbRow.id ?? dbRow.message_id ?? dbRow.id;
+      if(!id){
+        showError('Cannot delete: message id missing.');
+        return;
+      }
+      try{
+        // attempt delete on Supabase
+        const { error } = await supabase.from('messages').delete().eq('id', id);
+        if(error){
+          console.error('delete error', error);
+          showError('Delete failed (check permissions).');
+        } else {
+          // remove element from UI
+          wrapper.remove();
+        }
+      }catch(err){
+        console.error('delete exception', err);
+        showError('Delete exception (see console).');
+      }
+    });
+    wrapper.appendChild(btn);
+  }
+
+  return wrapper;
 }
-function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },4000); }
-function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent = '', 2200); }
 
-/* Display */
-function clearChat(){ chatEl.innerHTML = ''; }
-function displayMessageRow(row, { pending=false } = {}){
-  const username = row.username ?? row.user ?? 'Unknown';
-  const message = row.message ?? row.text ?? '';
-  const created_at = row.created_at ?? row.createdAt ?? new Date().toISOString();
-
-  const div = document.createElement('div');
-  div.className = 'message' + (pending ? ' pending' : '');
-  div.innerHTML = `<span class="username">${escapeHtml(username)}</span>
-                   <span class="text">${escapeHtml(message)}</span>
-                   <span class="ts">[${formatTimestamp(created_at)}]</span>`;
-  chatEl.appendChild(div);
+/* Display multiple messages (clears chat first) */
+function renderMessagesList(rows){
+  chatEl.innerHTML = '';
+  rows.forEach(r => {
+    const el = createMessageElement(r, { pending:false });
+    chatEl.appendChild(el);
+  });
+  // render pending items after DB rows
+  getPending().forEach(p => {
+    const el = createMessageElement(p, { pending:true });
+    chatEl.appendChild(el);
+  });
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* Pending queue */
-function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
-function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
-function removePending(obj){ const a=getPending(); const remaining = a.filter(x=>JSON.stringify(x)!==JSON.stringify(obj)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
-
-async function resendPending(){
-  const arr = getPending();
-  if(!arr.length) return;
-  for(const p of [...arr]){
-    try{
-      const { error } = await supabase.from('messages').insert([p]);
-      if(!error) removePending(p);
-    }catch(e){ console.error('resend error', e); }
-  }
-}
-
-/* Load messages */
+/* LOAD messages from DB */
 async function loadMessages(){
   try{
     const { data, error } = await supabase.from('messages').select('id,username,message,created_at').order('created_at', { ascending: true });
     if(error){
       console.error('load error', error);
-      showError('Failed to load messages — check table/RLS.');
+      showError('Failed to load messages (check DB/policies).');
       return;
     }
-    clearChat();
-    data.forEach(displayMessageRow);
-    // show pending after DB rows
-    getPending().forEach(p => displayMessageRow(p, { pending:true }));
+    renderMessagesList(data || []);
   }catch(e){
     console.error('unexpected load error', e);
-    showError('Unexpected load error — check console.');
+    showError('Unexpected load error.');
   }
 }
 
-/* Send message */
+/* RESEND pending */
+async function resendPending(){
+  const queue = getPending();
+  if(!queue.length) return;
+  for(const p of [...queue]){
+    try{
+      const { error } = await supabase.from('messages').insert([{ username: p.username, message: p.message }]);
+      if(!error) removePending(p);
+    }catch(e){
+      console.error('resend pending error', e);
+    }
+  }
+  // reload after attempt
+  await loadMessages();
+}
+
+/* SEND message (optimistic and queue when offline) */
 async function sendMessage(){
   const txt = messageInput.value.trim();
   if(!txt) return;
   if(!currentUsername){ flashNameMsg('Set username first'); return; }
 
-  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-
-  // optimistic local render; pending if offline
-  displayMessageRow(row, { pending: !navigator.onLine });
+  const obj = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+  // show optimistic (pending if offline)
+  const el = createMessageElement(obj, { pending: !navigator.onLine });
+  chatEl.appendChild(el);
+  chatEl.scrollTop = chatEl.scrollHeight;
   messageInput.value = '';
 
   if(!navigator.onLine){
-    addPending(row);
+    addPending(obj);
     return;
   }
 
@@ -198,69 +258,71 @@ async function sendMessage(){
     const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
     if(error){
       console.error('insert error', error);
-      addPending(row);
       showError('Send failed; queued locally.');
+      addPending(obj);
+    } else {
+      // load messages to refresh ids and allow deletion
+      await loadMessages();
     }
   }catch(e){
     console.error('send exception', e);
-    addPending(row);
+    addPending(obj);
     showError('Send exception; queued locally.');
   }
 }
 
-/* Username logic */
+/* USERNAME logic */
 async function isUsernameTakenInDB(name){
   try{
     const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
     if(error){ console.error('username check error', error); return true; }
-    return data && data.length > 0;
+    return (data && data.length > 0);
   }catch(e){ console.error(e); return true; }
 }
-
 saveNameBtn.addEventListener('click', async () => {
   const name = usernameEl.value.trim();
   if(!name){ flashNameMsg('Enter a username'); return; }
-
   if(oldUsernames.includes(name)){
     currentUsername = name;
     localStorage.setItem('chatUsername', currentUsername);
     currentUsernameLabel.textContent = 'Username: ' + currentUsername;
     flashNameMsg('Switched to saved username');
+    await loadMessages();
     return;
   }
-
   const taken = await isUsernameTakenInDB(name);
   if(taken){
     flashNameMsg('Username already taken');
     usernameEl.value = currentUsername || '';
     return;
   }
-
   currentUsername = name;
   localStorage.setItem('chatUsername', currentUsername);
   if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
   flashNameMsg('Username saved');
+  await loadMessages();
 });
 
-/* Initialize UI username */
+/* Initialize username UI */
 if(currentUsername){
   usernameEl.value = currentUsername;
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
 } else {
+  currentUsername = '';
   currentUsernameLabel.textContent = 'Username: Guest';
 }
 
-/* Realtime subscription + notification while running/backgrounded */
+/* Realtime subscription - we reload canonical list on INSERT and optionally notify when tab hidden */
 async function subscribeRealtime(){
   try{
     supabase.removeAllChannels();
     await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        // notification if tab hidden
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
+        // if tab hidden and user not author show notification via SW or Notification
         if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
           if(navigator.serviceWorker && navigator.serviceWorker.controller){
-            navigator.serviceWorker.controller.postMessage({ type:'notify', title: `${payload.new.username}`, body: payload.new.message ?? '' });
+            navigator.serviceWorker.controller.postMessage({ type:'notify', title:`${payload.new.username}`, body: payload.new.message ?? '' });
           } else {
             new Notification(`${payload.new.username}`, { body: payload.new.message ?? '' });
           }
@@ -271,18 +333,19 @@ async function subscribeRealtime(){
       .subscribe();
   }catch(e){
     console.error('subscribe error', e);
-    showError('Realtime subscribe failed — check console.');
+    showError('Realtime subscription failed.');
   }
 }
 
-/* Poll fallback for instant feel (0.5s) */
+/* Poll fallback */
+let pollTimer = null;
 function startPolling(){
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(loadMessages, 500);
 }
 
-/* Blob SW for in-page notifications while browser runs */
-const swBlobCode = `
+/* In-page small SW for notifications while browser runs */
+const swCode = `
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => self.clients.claim());
 self.addEventListener('message', e => {
@@ -300,34 +363,25 @@ self.addEventListener('notificationclick', e => {
   }));
 });
 `;
-
-/* Register SW and optionally FCM worker at root (if firebaseConfig.apiKey provided and file exists) */
-async function registerSwAndMaybeFcm(){
-  if(!('serviceWorker' in navigator)) return;
+async function registerBlobSw(){
+  if(!('serviceWorker' in navigator)) return null;
   try{
-    const blob = new Blob([swBlobCode], { type:'application/javascript' });
+    const blob = new Blob([swCode], { type:'application/javascript' });
     const url = URL.createObjectURL(blob);
-    await navigator.serviceWorker.register(url);
-    console.log('Blob SW registered');
-    if(firebaseConfig.apiKey){
-      try{
-        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('Attempted to register firebase-messaging-sw.js at site root.');
-      }catch(e){ console.warn('firebase SW register failed (ensure file exists at root)', e); }
-    }
-  }catch(e){ console.warn('service worker registration failed', e); }
+    const reg = await navigator.serviceWorker.register(url);
+    console.log('Blob SW registered', reg.scope);
+    return reg;
+  }catch(e){ console.warn('SW register failed', e); return null; }
 }
 
-/* Optional: FCM registration saved tokens (if firebaseConfig provided and firebase-messaging-sw.js exists)
-   Implementation omitted here — enable when you create firebase config and SW at root.
-*/
+/* Optional FCM token registration omitted by default; enable if you add firebaseConfig and firebase SW at root. */
 
+/* INIT */
 (async function init(){
-  await registerSwAndMaybeFcm();
+  await registerBlobSw();
   if('Notification' in window && Notification.permission !== 'granted'){
     try{ await Notification.requestPermission(); }catch(e){ console.warn(e); }
   }
-
   await loadMessages();
   await subscribeRealtime();
   startPolling();
@@ -337,17 +391,30 @@ async function registerSwAndMaybeFcm(){
   window.addEventListener('online', resendPending);
 })();
 
-/* Helpful SQL to run in Supabase SQL editor if messages table missing:
+/* Helpful SQL for Supabase (run in SQL editor if messages table missing and to allow delete):
+-- create messages table
 create table if not exists public.messages (
   id bigserial primary key,
   username text not null,
   message text not null,
   created_at timestamptz default now() not null
 );
+
+-- allow simple browser access with anon key (if you want)
 alter table public.messages enable row level security;
-create policy if not exists "public_select_messages" on public.messages for select using (true);
-create policy if not exists "public_insert_messages" on public.messages for insert with check (true);
+
+create policy if not exists "public_select_messages" on public.messages
+  for select using (true);
+
+create policy if not exists "public_insert_messages" on public.messages
+  for insert with check (true);
+
+-- **CAUTION**: To allow client-side DELETE by the user, add a policy that ensures only the message owner can delete:
+create policy if not exists "user_delete_own" on public.messages
+  for delete using (auth.role() = 'anon' OR username = auth.jwt().sub::text) with check (username = auth.jwt().sub::text);
+
+-- Alternatively, implement delete via a secure Edge Function that checks ownership on server-side.
 */
 </script>
 </body>
-</html>
+  </html>
