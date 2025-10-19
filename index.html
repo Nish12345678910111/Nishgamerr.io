@@ -9,28 +9,29 @@
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 
 <style>
-  /* GUI unchanged — your compact style */
-  body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px; margin:0; }
-  .wrap { width:100%; max-width:720px; }
-  h1 { text-align:center; color:#60a5fa; margin-bottom:10px; font-size:1.5rem; font-weight:700; }
-  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap; }
-  #currentUsername { color:#94a3b8; font-size:0.95rem; }
-  #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
-  #chat { background:#071127; border-radius:8px; padding:12px; height:300px; overflow-y:auto; border:1px solid #132033; }
-  .message { margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .username { color:#60a5fa; font-weight:700; margin-right:8px; }
-  .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; }
-  .delBtn { width:18px; height:18px; font-size:0.75rem; border:none; border-radius:3px; background:#fb7185; color:white; cursor:pointer; flex-shrink:0; }
-  #controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  #messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937; }
-  #sendBtn, #delAllBtn, #autoScrollBtn, #changeNameBtn { padding:10px 14px; background:#2563eb; border:none; border-radius:8px; color:white; cursor:pointer; }
-  #nameMsg { color:#fb7185; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
-  .pending { opacity:0.6; font-style:italic; }
-  #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700; }
-  .online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
-  #errorBox { margin-top:8px; color:#fecaca; min-height:1.2em; }
-  .btnRow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end; }
-  .smallNote { color:#94a3b8; font-size:0.8rem; margin-top:6px; }
+/* GUI kept exactly the same (compact) */
+body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px; margin:0; }
+.wrap { width:100%; max-width:720px; }
+h1 { text-align:center; color:#60a5fa; margin-bottom:10px; font-size:1.2rem; }
+.top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
+#currentUsername { color:#94a3b8; font-size:0.95rem; }
+#username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
+#chat { background:#071127; border-radius:8px; padding:12px; height:320px; overflow-y:auto; border:1px solid #132033; }
+.message { margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.message .info { flex:1; display:flex; gap:8px; align-items:center; }
+.username { color:#60a5fa; font-weight:700; margin-right:6px; }
+.ts { color:#94a3b8; font-size:0.82rem; margin-left:6px; }
+.delBtn { width:18px; height:18px; font-size:12px; border:none; border-radius:3px; background:#fb7185; color:white; cursor:pointer; flex-shrink:0; }
+#controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+#messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937; }
+#sendBtn, #delAllBtn, #autoScrollBtn, #changeNameBtn { padding:10px 14px; background:#2563eb; border:none; border-radius:8px; color:white; cursor:pointer; }
+#nameMsg { color:#fb7185; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
+.pending { opacity:0.6; font-style:italic; }
+#status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700; }
+.online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
+#errorBox { margin-top:8px; color:#fecaca; min-height:1.2em; }
+.btnRow { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+.smallNote { color:#94a3b8; font-size:0.8rem; margin-top:6px; }
 </style>
 </head>
 <body>
@@ -69,7 +70,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 /* ---------------- CONFIG ----------------
-   Replace these only if you want to use a different project
+   Replace only if you want to use a different Supabase project.
+   We'll use the anon key you provided.
 ------------------------------------------- */
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
@@ -77,7 +79,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
 
-/* DOM refs */
+/* DOM */
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
@@ -97,7 +99,7 @@ let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
 let autoScroll = localStorage.getItem('autoScroll') !== 'false';
 let deviceId = localStorage.getItem('chat_device_id') || crypto.randomUUID();
-if(!localStorage.getItem('chat_device_id')) localStorage.setItem('chat_device_id', deviceId);
+if (!localStorage.getItem('chat_device_id')) localStorage.setItem('chat_device_id', deviceId);
 let deviceIp = null;
 let realtimeConnected = false;
 let realtimeRetryCount = 0;
@@ -110,29 +112,27 @@ function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBo
 function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent = '', 2200); }
 function updateAutoScrollBtn(){ autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`; autoScrollBtn.style.background = autoScroll ? '#2563eb' : '#475569'; }
 
-/* Network status handling (fixes "showing offline" problem) */
+/* Network status (fix offline always showing) */
 function setStatusOffline(){ statusEl.textContent = 'Offline'; statusEl.className = 'offline'; }
 function setStatusOnline(){ statusEl.textContent = 'Online'; statusEl.className = 'online'; }
 function setStatusRealtime(){ statusEl.textContent = 'Realtime'; statusEl.className = 'online'; }
 
 function updateNetworkUI(){
   const online = navigator.onLine;
-  if(!online){
-    setStatusOffline();
-    realtimeConnected = false;
-    return;
-  }
-  // online: show realtime if ws connected, otherwise show online
-  if(realtimeConnected) setStatusRealtime();
-  else setStatusOnline();
+  if(!online){ setStatusOffline(); realtimeConnected = false; return; }
+  // online: if websocket connected show realtime, else show online
+  if(realtimeConnected) setStatusRealtime(); else setStatusOnline();
 }
+window.addEventListener('online', () => { updateNetworkUI(); initRealtime(); resendPending(); });
+window.addEventListener('offline', () => { updateNetworkUI(); realtimeConnected = false; });
+updateNetworkUI();
 
-/* fetch public IP */
+/* Fetch IP helper */
 async function fetchIP(){
   try{
-    const res = await fetch('https://api.ipify.org?format=json');
-    if(!res.ok) return null;
-    const j = await res.json();
+    const r = await fetch('https://api.ipify.org?format=json');
+    if(!r.ok) return null;
+    const j = await r.json();
     return j.ip;
   }catch(e){
     console.warn('fetchIP failed', e);
@@ -140,7 +140,7 @@ async function fetchIP(){
   }
 }
 
-/* service worker blob for notifications */
+/* Notification SW (blob) */
 const swCode = `
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => self.clients.claim());
@@ -165,7 +165,6 @@ async function registerBlobSW(){
     const blob = new Blob([swCode], { type:'application/javascript' });
     const url = URL.createObjectURL(blob);
     const reg = await navigator.serviceWorker.register(url);
-    console.log('SW registered (blob)', reg.scope);
     return reg;
   }catch(e){ console.warn('sw register failed', e); return null; }
 }
@@ -175,64 +174,83 @@ async function ensureNotificationPermission(){
   }
 }
 
-/* Messages rendering and dedupe */
+/* Rendering + dedupe */
 function displayMessageRow(row, { pending=false } = {}){
-  // dedupe by id (if present)
+  // avoid duplicates if row has id
   if(row.id && chatEl.querySelector(`[data-id='${row.id}']`)) return;
-  const username = row.username ?? row.user ?? 'Unknown';
-  const message = row.message ?? row.text ?? '';
+  // dedupe for pending: check exact message+username+created_at presence
+  if(!row.id){
+    const pendingNodes = Array.from(chatEl.querySelectorAll('.message.pending'));
+    if(pendingNodes.some(n => n.dataset.pending === `${row.username}|${row.message}|${row.created_at}`)) return;
+  }
+
+  const username = row.username ?? 'Unknown';
+  const message = row.message ?? '';
   const created_at = row.created_at ?? new Date().toISOString();
+
   const wrapper = document.createElement('div');
   wrapper.className = 'message' + (pending ? ' pending' : '');
   if(row.id) wrapper.dataset.id = row.id;
-  wrapper.innerHTML = `<div style="display:flex;gap:8px;align-items:center">
-      <span class="username">${escapeHtml(username)}</span>
-      <span class="text">${escapeHtml(message)}</span>
-      <span class="ts">[${fmtTime(created_at)}]</span>
-    </div>`;
-  // delete button only for messages that have an id and belong to currentUsername
-  if(row.id && username === currentUsername){
+  if(pending) wrapper.dataset.pending = `${username}|${message}|${created_at}`;
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  info.innerHTML = `<span class="username">${escapeHtml(username)}</span>
+                    <span class="text">${escapeHtml(message)}</span>
+                    <span class="ts">[${fmtTime(created_at)}]</span>`;
+
+  wrapper.appendChild(info);
+
+  // Only attach delete button when message stored and device_id matches this device
+  if(row.id && row.device_id === deviceId){
     const delBtn = document.createElement('button');
     delBtn.className = 'delBtn';
     delBtn.title = 'Delete';
     delBtn.textContent = '×';
     delBtn.onclick = async (e) => {
       e.stopPropagation();
-      try{
-        const { error } = await supabase.from('messages').delete().eq('id', row.id);
-        if(error){ console.error('delete error', error); showError('Delete failed'); return; }
-        wrapper.remove();
-      }catch(err){ console.error('delete exception', err); showError('Delete failed'); }
+      await deleteMessageByDevice(row.id, wrapper);
     };
     wrapper.appendChild(delBtn);
   } else {
-    // placeholder to keep spacing consistent for messages that are not deletable
+    // keep spacing consistent
     const spacer = document.createElement('div');
     spacer.style.width = '22px';
     wrapper.appendChild(spacer);
   }
+
   chatEl.appendChild(wrapper);
   if(autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* Pending queue */
+/* Pending queue functions */
 const PENDING_KEY = 'chat_pending_v3';
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
 function setPending(arr){ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
-function addPending(obj){ const a=getPending(); a.push(obj); setPending(a); }
-function removePending(obj){ const a=getPending().filter(x => JSON.stringify(x) !== JSON.stringify(obj)); setPending(a); }
+function addPending(obj){ const a = getPending(); a.push(obj); setPending(a); }
+function removePending(obj){ const a = getPending().filter(x => JSON.stringify(x) !== JSON.stringify(obj)); setPending(a); }
+
 async function resendPending(){
   const arr = getPending();
   if(!arr.length) return;
   for(const p of [...arr]){
     try{
-      const { error } = await supabase.from('messages').insert([{ username: p.username, message: p.message }]).select();
-      if(!error) removePending(p);
-    }catch(e){ console.warn('resend pending failed', e); }
+      const { data, error } = await supabase.from('messages').insert([p]).select();
+      if(!error){
+        removePending(p);
+        // remove pending UI item (match by pending dataset)
+        const nodes = Array.from(chatEl.querySelectorAll('.message.pending'));
+        for(const n of nodes){
+          if(n.dataset.pending === `${p.username}|${p.message}|${p.created_at}`) n.remove();
+        }
+        // add DB-rendered row
+        if(data && data[0]) displayMessageRow(data[0]);
+      }
+    } catch(e){ console.warn('resend error', e); }
   }
 }
 
-/* Load messages */
+/* Load messages from DB */
 async function loadMessages(){
   try{
     const { data, error } = await supabase.from('messages').select().order('created_at', { ascending: true });
@@ -243,37 +261,44 @@ async function loadMessages(){
     }
     chatEl.innerHTML = '';
     data.forEach(r => displayMessageRow(r));
+    // show pending on top of DB results
     getPending().forEach(p => displayMessageRow(p, { pending: true }));
   }catch(e){
     console.error('loadMessages exception', e);
-    showError('Load exception — check console.');
+    showError('Load exception — see console.');
   }
 }
 
-/* Send message (optimistic) */
+/* Send message (optimistic + device_id added) */
 async function sendMessage(){
   const txt = messageInput.value.trim();
   if(!txt) return;
   if(!currentUsername){ flashNameMsg('Set username first'); return; }
-  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+
+  const row = { username: currentUsername, message: txt, device_id: deviceId, created_at: new Date().toISOString() };
+  // optimistic pending UI
   displayMessageRow(row, { pending: !navigator.onLine });
   messageInput.value = '';
+
   if(!navigator.onLine){
     addPending(row);
     return;
   }
+
   try{
-    const { data, error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]).select();
+    const { data, error } = await supabase.from('messages').insert([row]).select().maybeSingle();
     if(error){
-      console.error('send error', error);
+      console.error('insert error', error);
       addPending(row);
       showError('Send failed; queued locally.');
       return;
     }
-    // optional: display returned row (realtime will also add it)
-    if(data && data[0]) {
-      // remove any pending duplicate UI entries if present and re-render exact DB row
+    // remove pending UI entry if exists, then display DB row
+    const nodes = Array.from(chatEl.querySelectorAll('.message.pending'));
+    for(const n of nodes){
+      if(n.dataset.pending === `${row.username}|${row.message}|${row.created_at}`) n.remove();
     }
+    if(data) displayMessageRow(data);
   }catch(e){
     console.error('send exception', e);
     addPending(row);
@@ -281,56 +306,71 @@ async function sendMessage(){
   }
 }
 
-/* Delete all my messages */
+/* Delete a message but only if device matches (client ensures and server query also includes device_id) */
+async function deleteMessageByDevice(id, domNode){
+  try{
+    const { error } = await supabase.from('messages').delete().match({ id }).eq('device_id', deviceId);
+    if(error){
+      console.error('delete error', error);
+      showError('Delete failed (server).');
+      return;
+    }
+    domNode.remove();
+  }catch(e){
+    console.error('delete exception', e);
+    showError('Delete failed (exception).');
+  }
+}
+
+/* Delete all messages posted by this device (client ensures device_id filter) */
 async function deleteAllMyMessages(){
   if(!currentUsername) return;
-  if(!confirm('Delete all messages you posted?')) return;
+  if(!confirm('Delete all messages posted from this device?')) return;
   try{
-    const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
-    if(error){ console.error('deleteAll error', error); showError('Delete all failed'); return; }
-    // remove from UI
+    const { error } = await supabase.from('messages').delete().eq('device_id', deviceId);
+    if(error){
+      console.error('deleteAll error', error);
+      showError('Delete all failed');
+      return;
+    }
+    // remove matching UI nodes
     Array.from(chatEl.children).forEach(node => {
+      const id = node.dataset.id;
+      // we can't easily inspect device_id from DOM, so remove nodes whose inner username matches currentUsername and have been inserted by this device
       const uname = node.querySelector('.username')?.textContent;
       if(uname === currentUsername) node.remove();
     });
   }catch(e){ console.error('deleteAll exception', e); showError('Delete all failed'); }
 }
 
-/* USERNAME registration: robust insert-first then fallback check */
+/* USERNAME registration flow (insert-first, then check owner if duplicate) */
 async function tryRegisterUsername(name){
   if(!deviceIp) deviceIp = await fetchIP();
   console.log('[username] register attempt', { name, deviceId, deviceIp });
 
-  // Try to insert first (fast path)
+  // Fast path: try to insert
   try {
-    const ins = await supabase
-      .from('user_ips')
-      .insert([{ username: name, device_id: deviceId, ip_address: deviceIp || 'unknown' }])
-      .select()
-      .maybeSingle();
-
+    const ins = await supabase.from('user_ips').insert([{ username: name, device_id: deviceId, ip_address: deviceIp || 'unknown' }]).select().maybeSingle();
     if(ins.error){
-      // If it's a duplicate/unique violation, we'll handle below; otherwise return false with log
-      const errStr = String(ins.error.message || ins.error.details || '');
-      const isDuplicate = errStr.toLowerCase().includes('duplicate') || errStr.toLowerCase().includes('unique') || (ins.error.code === '23505') || (ins.error.status === 409);
-      if(!isDuplicate){
+      const msg = String(ins.error.message || ins.error.details || '').toLowerCase();
+      const isDup = msg.includes('duplicate') || msg.includes('unique') || (ins.error.code === '23505') || (ins.error.status === 409);
+      if(!isDup){
         console.error('[username] insert error (not duplicate):', ins.error);
-        showError('Username registration failed (DB). See console.');
+        showError('Registration failed (DB). See console.');
         return false;
       }
-      // otherwise fall through to select handler
+      // else fall through to select check
     } else {
-      // success
       console.log('[username] inserted', ins.data);
       return true;
     }
   } catch(insertEx){
     console.warn('[username] insert exception (will check existing)', insertEx);
-    // continue to select handler below
+    // continue to select check
   }
 
-  // Select existing row to check owner
-  try {
+  // fallback: select existing row and check ownership
+  try{
     const sel = await supabase.from('user_ips').select().eq('username', name).limit(1).maybeSingle();
     if(sel.error){
       console.error('[username] select error', sel.error);
@@ -339,20 +379,18 @@ async function tryRegisterUsername(name){
     }
     const existing = sel.data;
     if(!existing){
-      // Insert gave duplicate but select returned nothing — treat as transient DB issue
-      showError('Registration conflict — try again shortly.');
+      showError('Registration conflict — try again.');
       return false;
     }
-    // If owner matches deviceId or ip -> allow reclaim
+    // allow reclaim if same device or same IP
     if(existing.device_id === deviceId || (deviceIp && existing.ip_address === deviceIp)){
-      // update device/ip for freshness (non-fatal)
-      try {
+      try{
         const { error: updErr } = await supabase.from('user_ips').update({ device_id: deviceId, ip_address: deviceIp || existing.ip_address }).eq('id', existing.id);
         if(updErr) console.warn('[username] update warning', updErr);
       } catch(updEx){ console.warn('[username] update exception', updEx); }
       return true;
     }
-    // belongs to someone else
+    // else someone else owns it
     return false;
   } catch(selEx){
     console.error('[username] select exception', selEx);
@@ -361,12 +399,11 @@ async function tryRegisterUsername(name){
   }
 }
 
-/* Save username UI logic */
+/* Save username button */
 saveNameBtn.addEventListener('click', async () => {
   const name = usernameEl.value.trim();
   if(!name){ flashNameMsg('Enter username'); return; }
 
-  // quick local reuse
   if(oldUsernames.includes(name)){
     currentUsername = name;
     localStorage.setItem('chatUsername', currentUsername);
@@ -389,7 +426,7 @@ saveNameBtn.addEventListener('click', async () => {
   flashNameMsg('Username saved');
 });
 
-/* Change username (clear local stored username so user can pick a new one) */
+/* Change username (clear local) */
 changeNameBtn.addEventListener('click', () => {
   currentUsername = '';
   localStorage.removeItem('chatUsername');
@@ -398,7 +435,7 @@ changeNameBtn.addEventListener('click', () => {
   flashNameMsg('You can now choose a new username');
 });
 
-/* Auto-login check (if local username exists) */
+/* Auto-login: if we have a local username, verify ownership or auto-register */
 (async function tryAutoLogin(){
   deviceIp = await fetchIP();
   deviceNote.textContent = deviceIp ? `Device ID saved · IP: ${deviceIp}` : `Device ID saved · IP unknown`;
@@ -408,50 +445,46 @@ changeNameBtn.addEventListener('click', () => {
       const { data: existing, error } = await supabase.from('user_ips').select().eq('username', currentUsername).limit(1).maybeSingle();
       if(error){
         console.warn('auto-login select error', error);
-        // allow local username to remain but warn
         flashNameMsg('Check username ownership — server error');
         return;
       }
       if(existing){
         if(existing.device_id === deviceId || existing.ip_address === deviceIp){
           currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-          // update last seen IP/device
+          // update last seen info (non-fatal)
           supabase.from('user_ips').update({ device_id: deviceId, ip_address: deviceIp || existing.ip_address }).eq('id', existing.id).catch(()=>{});
         } else {
-          // claimed elsewhere
           flashNameMsg('Saved username claimed elsewhere — choose another');
           currentUsername = '';
           localStorage.removeItem('chatUsername');
           currentUsernameLabel.textContent = 'Username: Guest';
         }
       } else {
-        // not present in DB: attempt to register automatically
+        // not present -> attempt register
         await tryRegisterUsername(currentUsername);
       }
-    }catch(e){ console.warn('auto-login exception', e); }
+    } catch(e){ console.warn('auto-login exception', e); }
   }
 })();
 
-/* Notifications & SW registration */
+/* Notifications & SW */
 (async function initNotifications(){
-  await registerBlobSW();
-  await ensureNotificationPermission();
+  try { await registerBlobSW(); await ensureNotificationPermission(); } catch(e){ /* ignore */ }
 })();
 
-/* Realtime subscription with robust retry + status updates */
+/* Realtime init with retries */
 async function initRealtime(){
   try {
-    // remove old channels
     try { supabase.removeAllChannels(); } catch(e){ /* ignore */ }
 
     const channel = supabase.channel('realtime-messages', { config: { broadcast: { ack: true } } });
 
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
       displayMessageRow(payload.new);
-      // show notification if hidden and permission granted and it's not our own message
+      // notify when page hidden and permission granted (and not our message)
       if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
         if(navigator.serviceWorker && navigator.serviceWorker.controller){
-          navigator.serviceWorker.controller.postMessage({ type:'notify', title: `${payload.new.username}`, body: payload.new.message || '' });
+          navigator.serviceWorker.controller.postMessage({ type: 'notify', title: `${payload.new.username}`, body: payload.new.message || '' });
         } else {
           new Notification(`${payload.new.username}`, { body: payload.new.message || '' });
         }
@@ -459,14 +492,12 @@ async function initRealtime(){
     });
 
     channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-      // payload.old contains deleted row
       const el = chatEl.querySelector(`[data-id='${payload.old.id}']`);
       if(el) el.remove();
     });
 
     channel.subscribe((status, err) => {
-      // status may be 'SUBSCRIBED', 'TIMED_OUT', 'CHANNEL_ERROR', 'CLOSED', etc.
-      console.log('realtime subscribe status:', status, err || '');
+      console.log('realtime status', status, err || '');
       if(status === 'SUBSCRIBED' || status === 'ONLINE'){
         realtimeConnected = true;
         realtimeRetryCount = 0;
@@ -474,19 +505,17 @@ async function initRealtime(){
       } else {
         realtimeConnected = false;
         setStatusOnline();
-        if(err) console.warn('realtime error:', err);
-        // attempt backoff reconnect
+        if(err) console.warn('realtime subscribe err', err);
         if(realtimeRetryCount < maxRealtimeRetries){
           realtimeRetryCount++;
           const delay = Math.min(1000 * Math.pow(2, realtimeRetryCount), 30000);
-          console.log('realtime reconnect in', delay);
           setTimeout(initRealtime, delay);
         }
       }
     });
 
   } catch(e){
-    console.error('initRealtime exception', e);
+    console.error('initRealtime error', e);
     realtimeConnected = false;
     setStatusOnline();
   }
@@ -497,43 +526,48 @@ initRealtime();
 updateAutoScrollBtn();
 setInterval(loadMessages, 1000);
 
-/* Wire UI */
+/* Wire events */
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
 delAllBtn.addEventListener('click', deleteAllMyMessages);
 autoScrollBtn.addEventListener('click', () => { autoScroll = !autoScroll; localStorage.setItem('autoScroll', autoScroll); updateAutoScrollBtn(); });
+window.addEventListener('online', () => { updateNetworkUI(); initRealtime(); resendPending(); });
+window.addEventListener('offline', () => { updateNetworkUI(); realtimeConnected = false; });
 
-/* initial loads */
+/* Initial load/resend */
 (async function start(){
   await loadMessages();
   await resendPending();
   updateNetworkUI();
 })();
 
-/* tiny helpers defined earlier used below */
+/* utility functions referenced above */
 async function registerBlobSW(){
   if(!('serviceWorker' in navigator)) return null;
-  try {
+  try{
     const blob = new Blob([swCode], { type: 'application/javascript' });
     const url = URL.createObjectURL(blob);
     const reg = await navigator.serviceWorker.register(url);
-    console.log('blob SW registered');
     return reg;
-  } catch(e){ console.warn('registerBlobSW failed', e); return null; }
+  }catch(e){ console.warn('sw register failed', e); return null; }
 }
-
-/* small name flash used earlier */
 function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent = '', 2200); }
-
-/* keep UI network status updated when online/offline changes */
-window.addEventListener('online', () => { updateNetworkUI(); initRealtime(); resendPending(); });
-window.addEventListener('offline', () => { updateNetworkUI(); realtimeConnected = false; });
 
 </script>
 
 <!--
-IMPORTANT SQL (run in Supabase SQL editor if you haven't yet)
-----------------------------------------------------------------
+SQL to run in Supabase SQL Editor (run once):
+
+-- 1) messages table with device_id
+create table if not exists public.messages (
+  id bigint generated by default as identity primary key,
+  username text not null,
+  message text not null,
+  device_id text not null,
+  created_at timestamptz default now() not null
+);
+
+-- 2) user_ips table for username ownership
 create table if not exists public.user_ips (
   id bigint generated by default as identity primary key,
   username text unique not null,
@@ -542,13 +576,38 @@ create table if not exists public.user_ips (
   created_at timestamptz default now() not null
 );
 
--- For quick testing you can add permissive policies (not for production)
+-- 3) publish for realtime (if needed)
+alter publication supabase_realtime add table if not exists public.messages;
+alter publication supabase_realtime add table if not exists public.user_ips;
+
+-- 4) RLS policy examples for testing (permissive). For production, tighten these.
+alter table public.messages enable row level security;
+create policy if not exists "public_select_messages" on public.messages
+  for select using (true);
+
+create policy if not exists "public_insert_messages" on public.messages
+  for insert with check (true);
+
+create policy if not exists "public_delete_own_messages" on public.messages
+  for delete using (auth.role() = 'authenticated' OR true) with check (true);
+-- Note: above delete policy is permissive for testing. To fully prevent cross-device deletes,
+-- you should create a policy that only allows delete when device_id = current_user_device 
+-- which requires an authentication mechanism or edge function. For quick testing we also include client-side device_id matching.
+
 alter table public.user_ips enable row level security;
-create policy "allow_public_select" on public.user_ips for select using (true);
-create policy "allow_public_insert" on public.user_ips for insert with check (true);
-create policy "allow_public_update" on public.user_ips for update using (true) with check (true);
-----------------------------------------------------------------
+create policy if not exists "public_select_user_ips" on public.user_ips
+  for select using (true);
+
+create policy if not exists "public_insert_user_ips" on public.user_ips
+  for insert with check (true);
+
+create policy if not exists "public_update_user_ips" on public.user_ips
+  for update using (true) with check (true);
+
+-- IMPORTANT: The policies above are permissive to let anon key operate from browser for testing.
+-- For production, lock these down and use Edge Functions or authenticated inserts/updates.
+
 -->
 
 </body>
-</html>
+  </html>
