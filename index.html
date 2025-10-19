@@ -218,6 +218,19 @@
     #chat::-webkit-scrollbar-thumb:hover {
       background: #2563eb;
     }
+
+    /* Mobile-specific styles for shorter text box */
+    @media (max-width: 767px) {
+      #messageInput {
+        padding: 8px;
+        font-size: 0.9rem;
+        line-height: 1.2;
+      }
+      #sendBtn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -426,109 +439,4 @@ if(currentUsername){
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
 }
 
-/* Realtime subscription and notifications while browser running/backgrounded */
-async function subscribeRealtime(){
-  try {
-    supabase.removeAllChannels();
-    await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
-        displayMessageRow(payload.new);
-        // notify when tab hidden and permission granted
-        if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
-          // prefer service worker notification if controller exists
-          if(navigator.serviceWorker && navigator.serviceWorker.controller){
-            navigator.serviceWorker.controller.postMessage({ type:'notify', title:`New: ${payload.new.username}`, body: payload.new.message ?? payload.new.text ?? '' });
-          } else {
-            new Notification(`New: ${payload.new.username}`, { body: payload.new.message ?? payload.new.text ?? '' });
-          }
-        }
-      })
-      .subscribe();
-  } catch(e){
-    console.error('subscribe error', e);
-    showError('Realtime subscribe failed — check console.');
-  }
-}
-
-/* Poll fallback for instant feel */
-function startPolling(){
-  if(pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(loadMessages, 700);
-}
-
-/* Small in-memory service worker (blob) to show notifications while browser running */
-const swCode = `
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => self.clients.claim());
-self.addEventListener('message', e => {
-  const d = e.data;
-  if(!d || d.type !== 'notify') return;
-  const title = d.title || 'New message';
-  const opts = { body: d.body || '', tag: 'chat-notify', renotify: true };
-  self.registration.showNotification(title, opts);
-});
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(clients.matchAll({ type:'window' }).then(list => {
-    for(const w of list) if(w.visibilityState === 'visible') return w.focus();
-    return clients.openWindow('/');
-  }));
-});
-`;
-async function registerBlobSW(){
-  if(!('serviceWorker' in navigator)) return null;
-  try {
-    const blob = new Blob([swCode], { type:'application/javascript' });
-    const url = URL.createObjectURL(blob);
-    const reg = await navigator.serviceWorker.register(url);
-    console.log('blob SW registered', reg.scope);
-    return reg;
-  } catch(e){
-    console.warn('blob SW failed', e);
-    return null;
-  }
-}
-
-/* Request notification permission (non-blocking) */
-async function ensureNotificationPermission(){ if('Notification' in window && Notification.permission !== 'granted') { try { await Notification.requestPermission(); } catch(e){console.warn(e);} } }
-
-/* Init */
-(async function init(){
-  await registerBlobSW();
-  await ensureNotificationPermission();
-  await loadMessages();
-  await subscribeRealtime();
-  startPolling();
-
-  // wire UI
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
-
-  // resend pending on online
-  window.addEventListener('online', resendPending);
-})();
-
-/* ===== Helpful debug SQL to run in Supabase SQL editor (run once) =====
--- 1) create messages table (run this in Supabase SQL Editor)
-create table if not exists public.messages (
-  id bigint generated always as identity primary key,
-  username text not null,
-  message text not null,
-  created_at timestamptz default now() not null
-);
-
--- 2) enable realtime replication for this table (optional; Supabase may have it by default)
-alter publication supabase_realtime add table public.messages;
-
--- 3) enable RLS and policies (if you use anon key from browser)
-alter table public.messages enable row level security;
-
-create policy if not exists "public_select_messages" on public.messages
-  for select using (true);
-
-create policy if not exists "public_insert_messages" on public.messages
-  for insert with check (true);
-======================================================================== */
-</script>
-</body>
-</html>
+/* Re
