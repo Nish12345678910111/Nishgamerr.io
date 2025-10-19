@@ -1,141 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chat — Supabase Realtime</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
-  :root {
-    --bg-primary: #0b1220;
-    --bg-secondary: #071127;
-    --bg-input: #0f1724;
-    --border: #1f2937;
-    --text-primary: #e6eef8;
-    --text-secondary: #94a3b8;
-    --accent: #60a5fa;
-    --button: #2563eb;
-    --error: #fb7185;
-    --online: #16a34a;
-    --offline: #dc2626;
-    --shadow: 0 2px 8px rgba(0,0,0,.3);
-    --radius: 8px;
-    --transition: all .2s ease;
-  }
-  body { background: var(--bg-primary); color: var(--text-primary); font-family: 'Inter', sans-serif; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; margin:0; padding:24px; line-height:1.5; }
-  .wrap { width:100%; max-width:768px; margin:0 auto; }
-  h1 { text-align:center; color:var(--accent); font-size:1.75rem; font-weight:600; margin:0 0 16px; }
-  .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-  #currentUsername { color: var(--text-secondary); font-size:0.875rem; font-weight:500; }
-  #username { background: var(--bg-input); color: var(--text-primary); border:1px solid var(--border); padding:8px 12px; border-radius: var(--radius); width:200px; font-size:0.875rem; transition:var(--transition);}
-  #username:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.2);}
-  #saveName { background: var(--button); color:white; border:none; padding:8px 16px; border-radius: var(--radius); font-size:0.875rem; cursor:pointer; transition: var(--transition);}
-  #saveName:hover { background:#1d4ed8; transform: translateY(-1px);}
-  #saveName:active { transform: translateY(0);}
-  #chat { background: var(--bg-secondary); border-radius: var(--radius); padding:16px; height:400px; overflow-y:auto; border:1px solid var(--border); box-shadow: var(--shadow); margin-bottom:12px; scrollbar-width:thin; scrollbar-color: var(--accent) var(--bg-secondary);}
-  #chat::-webkit-scrollbar { width:8px; }
-  #chat::-webkit-scrollbar-track { background: var(--bg-secondary); }
-  #chat::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--radius);}
-  .message { margin-bottom:12px; font-size:0.9rem; display:flex; align-items:center; gap:8px; position:relative; }
-  .username { color:var(--accent); font-weight:600; flex-shrink:0; }
-  .ts { color: var(--text-secondary); font-size:0.75rem; flex-shrink:0; }
-  #controls { display:flex; gap:10px; margin-top:12px; }
-  #messageInput { flex:1; padding:12px; border-radius: var(--radius); background: var(--bg-input); color: var(--text-primary); border:1px solid var(--border); font-size:0.875rem; transition: var(--transition);}
-  #messageInput:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.2);}
-  #sendBtn { padding:12px 18px; background: var(--button); border:none; border-radius: var(--radius); color:white; font-size:0.875rem; cursor:pointer; transition: var(--transition);}
-  #sendBtn:hover { background:#1d4ed8; transform: translateY(-1px);}
-  #sendBtn:active { transform:translateY(0);}
-  #nameMsg { color: var(--error); font-size:0.85rem; margin-top:8px; min-height:1.2em; }
-  #status { position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:var(--radius); font-size:0.75rem; font-weight:600; box-shadow: var(--shadow); transition: var(--transition);}
-  .online { background: var(--online); color:white; }
-  .offline { background: var(--offline); color:white; }
-  #errorBox { margin-top:10px; color: var(--error); font-size:0.85rem; min-height:1.2em; }
-  .delBtn { width:16px; height:16px; background:red; color:white; font-size:10px; border:none; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; position:absolute; right:0; top:0; }
-  @media (max-width:600px) { body { padding:16px;} .wrap{max-width:100%;} h1{font-size:1.5rem;} #chat{height:300px;} #username{width:100%; max-width:200px;} .top{flex-direction:column; align-items:flex-start;} }
+:root {
+  --bg-primary:#0b1220; --bg-secondary:#071127; --bg-input:#0f1724;
+  --border:#1f2937; --text-primary:#e6eef8; --text-secondary:#94a3b8;
+  --accent:#60a5fa; --button:#2563eb; --error:#fb7185; --online:#16a34a;
+  --offline:#dc2626; --shadow:0 2px 8px rgba(0,0,0,.3); --radius:8px; --transition:all .2s ease;
+}
+body { background:var(--bg-primary); color:var(--text-primary); font-family:'Inter',sans-serif;
+display:flex; justify-content:center; align-items:flex-start; min-height:100vh; margin:0; padding:24px; line-height:1.5;}
+.wrap { width:100%; max-width:768px; margin:0 auto;}
+h1 { text-align:center; color:var(--accent); font-size:1.75rem; font-weight:600; margin:0 0 16px;}
+.top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+#currentUsername { color:var(--text-secondary); font-size:0.875rem; font-weight:500;}
+#username { background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border); padding:8px 12px; border-radius:var(--radius); width:200px; font-size:0.875rem; transition:var(--transition);}
+#username:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.2);}
+#saveName { background:var(--button); color:white; border:none; padding:8px 16px; border-radius:var(--radius); font-size:0.875rem; cursor:pointer; transition:var(--transition);}
+#saveName:hover { background:#1d4ed8; transform:translateY(-1px);}
+#saveName:active { transform:translateY(0);}
+#chat { background:var(--bg-secondary); border-radius:var(--radius); padding:16px; height:400px; overflow-y:auto; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:12px; scrollbar-width:thin; scrollbar-color:var(--accent) var(--bg-secondary);}
+#chat::-webkit-scrollbar { width:8px;}
+#chat::-webkit-scrollbar-track { background:var(--bg-secondary);}
+#chat::-webkit-scrollbar-thumb { background:var(--accent); border-radius:var(--radius);}
+.message { margin-bottom:12px; font-size:0.9rem; display:flex; align-items:center; gap:8px; position:relative;}
+.username { color:var(--accent); font-weight:600; flex-shrink:0;}
+.ts { color:var(--text-secondary); font-size:0.75rem; flex-shrink:0;}
+#controls { display:flex; gap:10px; margin-top:12px;}
+#messageInput { flex:1; padding:12px; border-radius:var(--radius); background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border); font-size:0.875rem; transition:var(--transition);}
+#messageInput:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.2);}
+#sendBtn { padding:12px 18px; background:var(--button); border:none; border-radius:var(--radius); color:white; font-size:0.875rem; cursor:pointer; transition:var(--transition);}
+#sendBtn:hover { background:#1d4ed8; transform:translateY(-1px);}
+#sendBtn:active { transform:translateY(0);}
+#nameMsg { color:var(--error); font-size:0.85rem; margin-top:8px; min-height:1.2em;}
+#status { position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:var(--radius); font-size:0.75rem; font-weight:600; box-shadow:var(--shadow); transition:var(--transition);}
+.online { background:var(--online); color:white;}
+.offline { background:var(--offline); color:white;}
+#errorBox { margin-top:10px; color:var(--error); font-size:0.85rem; min-height:1.2em;}
+.delBtn { width:16px; height:16px; background:red; color:white; font-size:10px; border:none; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; position:absolute; right:0; top:0;}
+@media(max-width:600px){ body{padding:16px;} .wrap{max-width:100%;} h1{font-size:1.5rem;} #chat{height:300px;} #username{width:100%; max-width:200px;} .top{flex-direction:column; align-items:flex-start;} }
 </style>
 </head>
 <body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat App</h1>
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color:#94a3b8">Dark • Realtime</div>
-    </div>
-    <div id="chat" role="log" aria-live="polite"></div>
-    <div id="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div id="errorBox"></div>
+<div id="status" class="offline">Offline</div>
+<div class="wrap">
+<h1>Modern Chat App</h1>
+<div class="top">
+  <div>
+    <span id="currentUsername">Username: Guest</span>
+    <input id="username" placeholder="Enter username">
+    <button id="saveName">Save</button>
+    <div id="nameMsg"></div>
   </div>
+  <div style="color:#94a3b8">Dark • Realtime</div>
+</div>
+<div id="chat" role="log" aria-live="polite"></div>
+<div id="controls">
+  <input id="messageInput" placeholder="Type a message">
+  <button id="sendBtn">Send</button>
+</div>
+<div id="errorBox"></div>
+</div>
 
 <script type="module">
-const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL='https://xvnbxdcqmfsnnvbugasi.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
+const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const nameMsgEl = document.getElementById('nameMsg');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
+const chatEl=document.getElementById('chat'), usernameEl=document.getElementById('username'), saveNameBtn=document.getElementById('saveName'), nameMsgEl=document.getElementById('nameMsg'), currentUsernameLabel=document.getElementById('currentUsername'), messageInput=document.getElementById('messageInput'), sendBtn=document.getElementById('sendBtn'), statusEl=document.getElementById('status'), errorBox=document.getElementById('errorBox');
 
-let currentUsername = localStorage.getItem('chatUsername') || '';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-let lastSentMessage = null;
+let currentUsername=localStorage.getItem('chatUsername')||'', oldUsernames=JSON.parse(localStorage.getItem('oldUsernames')||'[]'), lastSentMessage=null;
 
-function updateNetworkUI() {
-  const online = navigator.onLine;
-  statusEl.textContent = online ? 'Online' : 'Offline';
-  statusEl.className = online ? 'online' : 'offline';
-  if(online) resendPending();
-}
-window.addEventListener('online', updateNetworkUI);
-window.addEventListener('offline', updateNetworkUI);
+function updateNetworkUI(){ const online=navigator.onLine; statusEl.textContent=online?'Online':'Offline'; statusEl.className=online?'online':'offline'; if(online) resendPending(); }
+window.addEventListener('online',updateNetworkUI);
+window.addEventListener('offline',updateNetworkUI);
 updateNetworkUI();
 
-function escapeHtml(s) { return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function escapeHtml(s){return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
 function fmtTime(ts){ return !ts?'??:??':new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}
 function showError(msg){ errorBox.textContent=msg; setTimeout(()=>{if(errorBox.textContent===msg) errorBox.textContent='';},4000);}
-function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2200); }
+function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2200);}
 
-function displayMessageRow(row, { pending=false }={}) {
-  const div=document.createElement('div');
-  div.className='message'+(pending?' pending':'');
-  div.innerHTML=`<span class="username">${escapeHtml(row.username??row.user??'Unknown')}</span>
-                   <span class="text">${escapeHtml(row.message??row.text??'')}</span>
-                   <span class="ts">[${fmtTime(row.created_at??row.createdAt??new Date())}]</span>`;
-  if(row.username===currentUsername){
-    const delBtn=document.createElement('button');
-    delBtn.className='delBtn';
-    delBtn.textContent='x';
-    delBtn.onclick=async()=>{ 
-      try { await supabase.from('messages').delete().eq('id',row.id); div.remove(); } catch(e){ showError('Delete failed'); }
-    };
-    div.appendChild(delBtn);
-  }
-  chatEl.appendChild(div);
-  chatEl.scrollTop=chatEl.scrollHeight;
+function displayMessageRow(row, {pending=false}={}){
+  const div=document.createElement('div'); div.className='message'+(pending?' pending':''); div.dataset.id=row.id;
+  div.innerHTML=`<span class="username">${escapeHtml(row.username??'Unknown')}</span> <span class="text">${escapeHtml(row.message??'')}</span> <span class="ts">[${fmtTime(row.created_at??new Date())}]</span>`;
+  if(row.username===currentUsername){ const delBtn=document.createElement('button'); delBtn.className='delBtn'; delBtn.textContent='x'; delBtn.onclick=async()=>{ try{ await supabase.from('messages').delete().eq('id',row.id); div.remove(); }catch{showError('Delete failed');} }; div.appendChild(delBtn); }
+  chatEl.appendChild(div); chatEl.scrollTop=chatEl.scrollHeight;
 }
 
 const PENDING_KEY='chat_pending_v1';
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]'); }
-function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY,JSON.stringify(a)); }
+function addPending(obj){ const a=get
+Pending(); a.push(obj); localStorage.setItem(PENDING_KEY,JSON.stringify(a)); }
 function removePendingItem(m){ localStorage.setItem(PENDING_KEY,JSON.stringify(getPending().filter(x=>JSON.stringify(x)!==JSON.stringify(m)))); }
 async function resendPending(){
   for(const p of getPending()){
-    try{ const {error}=await supabase.from('messages').insert([p]); if(!error) removePendingItem(p);}catch{}
+    try{
+      const {error}=await supabase.from('messages').insert([p]);
+      if(!error) removePendingItem(p);
+    }catch{}
   }
 }
 
@@ -146,18 +114,24 @@ async function loadMessages(){
     chatEl.innerHTML='';
     data.forEach(displayMessageRow);
     getPending().forEach(p=>displayMessageRow(p,{pending:true}));
-  }catch{ showError('Unexpected load error');}
+  }catch{showError('Unexpected load error.');}
 }
 
 async function sendMessage(){
   const txt=messageInput.value.trim();
-  if(!txt||!currentUsername) return !txt?null:flashNameMsg('Set username first');
-  const row={username:currentUsername,message:txt,created_at:new Date().toISOString()};
-  if(!navigator.onLine){ addPending(row); displayMessageRow(row,{pending:true}); }
-  else{
+  if(!txt) return;
+  if(!currentUsername){ flashNameMsg('Set username first'); return; }
+  const row={ username:currentUsername, message:txt, created_at:new Date().toISOString() };
+  if(!navigator.onLine){
+    addPending(row); displayMessageRow(row,{pending:true});
+  } else {
     lastSentMessage=row;
-    try{ const {error}=await supabase.from('messages').insert([{username:currentUsername,message:txt}]); if(error) throw error;} 
-    catch{ addPending(row); displayMessageRow(row,{pending:true}); showError('Send error; queued locally');}
+    try{
+      const {error}=await supabase.from('messages').insert([{ username:currentUsername, message:txt }]);
+      if(error) throw error;
+    }catch{
+      addPending(row); displayMessageRow(row,{pending:true}); showError('Send error; queued locally.');
+    }
   }
   messageInput.value='';
 }
@@ -166,10 +140,10 @@ async function isUsernameTakenInDB(name){
   try{
     const {data}=await supabase.from('messages').select('id').eq('username',name).limit(1);
     return data?.length>0;
-  }catch{return true;}
+  }catch{ return true; }
 }
 
-saveNameBtn.addEventListener('click',async()=>{
+saveNameBtn.addEventListener('click', async()=>{
   const name=usernameEl.value.trim();
   if(!name) return flashNameMsg('Enter a username');
   if(oldUsernames.includes(name)){
@@ -178,7 +152,11 @@ saveNameBtn.addEventListener('click',async()=>{
     currentUsernameLabel.textContent=`Username: ${name}`;
     return flashNameMsg('Switched to saved username');
   }
-  if(await isUsernameTakenInDB(name)){ flashNameMsg('Username already taken'); usernameEl.value=currentUsername; return; }
+  if(await isUsernameTakenInDB(name)){
+    flashNameMsg('Username already taken');
+    usernameEl.value=currentUsername;
+    return;
+  }
   currentUsername=name;
   localStorage.setItem('chatUsername',name);
   oldUsernames.push(name);
@@ -192,13 +170,15 @@ if(currentUsername){ usernameEl.value=currentUsername; currentUsernameLabel.text
 async function subscribeRealtime(){
   try{
     await supabase.removeAllSubscriptions();
-    const channel=supabase.channel(`realtime-messages-${Date.now()}`,{config:{broadcast:{ack:true}}});
+    const channel=supabase.channel('realtime-messages',{config:{broadcast:{ack:true}}});
     channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
       const newMsg=payload.new;
       if(lastSentMessage && newMsg.username===lastSentMessage.username && newMsg.message===lastSentMessage.message && Math.abs(new Date(newMsg.created_at)-new Date(lastSentMessage.created_at))<1000) return;
       displayMessageRow(newMsg);
-    }).subscribe(status=>{ if(status!=='SUBSCRIBED') showError('Realtime issue'); });
-  }catch{showError('Realtime failed');}
+    }).subscribe(status=>{
+      if(status!=='SUBSCRIBED') showError('Realtime connection issue.');
+    });
+  }catch{ showError('Realtime subscription failed.'); }
 }
 
 (async()=>{
