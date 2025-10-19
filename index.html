@@ -3,273 +3,103 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — Supabase Realtime</title>
+<title>Chat — Supabase Realtime (Fixed)</title>
+
+<!-- Supabase client -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+
 <style>
-  :root {
-    --bg-primary: #0b1220;
-    --bg-secondary: #071127;
-    --bg-input: #0f1724;
-    --border: #1f2937;
-    --text-primary: #e6eef8;
-    --text-secondary: #94a3b8;
-    --accent: #60a5fa;
-    --button: #2563eb;
-    --error: #fb7185;
-    --online: #16a34a;
-    --offline: #dc2626;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --radius: 8px;
-    --transition: all 0.2s ease;
+  /* Old compact GUI look (keeps your original look) */
+  :root{
+    --bg:#0b1220; --panel:#071127; --input:#0f1724; --border:#1f2937;
+    --text:#e6eef8; --muted:#94a3b8; --accent:#60a5fa; --btn:#2563eb;
+    --err:#fb7185; --ok:#16a34a; --radius:8px; --shadow:0 2px 8px rgba(0,0,0,.3);
   }
-
-  body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    margin: 0;
-    padding: 24px;
-    line-height: 1.5;
-  }
-
-  .wrap {
-    width: 100%;
-    max-width: 768px;
-    margin: 0 auto;
-  }
-
-  h1 {
-    text-align: center;
-    color: var(--accent);
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin: 0 0 16px;
-    letter-spacing: -0.02em;
-  }
-
-  .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-
-  #currentUsername {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  #username {
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 8px 12px;
-    border-radius: var(--radius);
-    width: 200px;
-    font-size: 0.875rem;
-    transition: var(--transition);
-  }
-
-  #username:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-  }
-
-  #saveName {
-    background: var(--button);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #saveName:hover {
-    background: #1d4ed8;
-    transform: translateY(-1px);
-  }
-
-  #saveName:active {
-    transform: translateY(0);
-  }
-
-  #chat {
-    background: var(--bg-secondary);
-    border-radius: var(--radius);
-    padding: 16px;
-    height: 450px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    margin-bottom: 12px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--accent) var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  #chat::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: var(--radius);
-  }
-
-  .message {
-    margin-bottom: 12px;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-
-  .username {
-    color: var(--accent);
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-
-  .ts {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    flex-shrink: 0;
-  }
-
-  #controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 12px;
-  }
-
-  #messageInput {
-    flex: 1;
-    padding: 12px;
-    border-radius: var(--radius);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    font-size: 0.875rem;
-    transition: var(--transition);
-  }
-
-  #messageInput:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-  }
-
-  #sendBtn {
-    padding: 12px 18px;
-    background: var(--button);
-    border: none;
-    border-radius: var(--radius);
-    color: white;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #sendBtn:hover {
-    background: #1d4ed8;
-    transform: translateY(-1px);
-  }
-
-  #sendBtn:active {
-    transform: translateY(0);
-  }
-
-  #nameMsg {
-    color: var(--error);
-    font-size: 0.85rem;
-    margin-top: 8px;
-    min-height: 1.2em;
-  }
-
-  .pending {
-    opacity: 0.7;
-    font-style: italic;
-  }
-
-  #status {
-    position: fixed;
-    right: 16px;
-    top: 16px;
-    padding: 8px 12px;
-    border-radius: var(--radius);
-    font-size: 0.75rem;
-    font-weight: 600;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-  }
-
-  .online {
-    background: var(--online);
-    color: white;
-  }
-
-  .offline {
-    background: var(--offline);
-    color: white;
-  }
-
-  #errorBox {
-    margin-top: 10px;
-    color: var(--error);
-    font-size: 0.85rem;
-    min-height: 1.2em;
-  }
-
-  @media (max-width: 600px) {
-    body { padding: 16px; }
-    .wrap { max-width: 100%; }
-    h1 { font-size: 1.5rem; }
-    #chat { height: 350px; }
-    #username { width: 100%; max-width: 200px; }
-    .top { flex-direction: column; align-items: flex-start; }
-  }
+  body{background:var(--bg); color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;
+        display:flex; justify-content:center; padding:24px; margin:0;}
+  .wrap{width:100%; max-width:768px;}
+  h1{color:var(--accent); text-align:center; margin-bottom:12px;}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+  #currentUsername{color:var(--muted)}
+  #username{background:var(--input); color:var(--text); border:1px solid var(--border); padding:8px 10px; border-radius:6px; width:220px}
+  #saveName{background:var(--btn); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer}
+  #chat{background:var(--panel); border-radius:8px; padding:14px; height:440px; overflow:auto; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:12px;}
+  .message{margin-bottom:10px; display:flex; gap:8px; align-items:baseline;}
+  .username{color:var(--accent); font-weight:700; flex-shrink:0}
+  .ts{color:var(--muted); font-size:.8rem; flex-shrink:0}
+  #controls{display:flex;gap:10px}
+  #messageInput{flex:1; padding:12px; border-radius:8px; background:var(--input); color:var(--text); border:1px solid var(--border)}
+  #sendBtn{padding:12px 16px; background:var(--btn); color:white; border:none; border-radius:8px; cursor:pointer}
+  .pending{opacity:.7; font-style:italic}
+  #nameMsg{color:var(--err); font-size:.9rem; margin-top:6px; min-height:1.2em}
+  #status{position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:8px; font-weight:700; box-shadow:var(--shadow)}
+  .online{background:var(--ok); color:#05300d} .offline{background:#dc2626; color:#2b0202}
+  #errorBox{margin-top:10px; color:var(--err); min-height:1.2em}
+  @media(max-width:600px){#username{width:100%}}
 </style>
 </head>
 <body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat App</h1>
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color:#94a3b8">Dark • Realtime</div>
+<div id="status" class="offline">Offline</div>
+
+<div class="wrap">
+  <h1>Modern Chat App</h1>
+
+  <div class="top">
+    <div>
+      <span id="currentUsername">Username: Guest</span>
+      <input id="username" placeholder="Enter username" />
+      <button id="saveName">Save</button>
+      <div id="nameMsg"></div>
     </div>
-    <div id="chat" role="log" aria-live="polite"></div>
-    <div id="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div id="errorBox"></div>
+    <div style="color:var(--muted)">Dark • Realtime</div>
   </div>
 
+  <div id="chat" role="log" aria-live="polite"></div>
+
+  <div id="controls">
+    <input id="messageInput" placeholder="Type a message" />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <div id="errorBox"></div>
+</div>
+
 <script type="module">
+/* ============================
+   CONFIG — fill only if needed
+   ============================
+   Supabase project (you already provided these)
+*/
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/* Optional: Firebase config for closed-browser push (FCM)
+   If you want push while browser is fully closed, fill firebaseConfig.apiKey and other fields,
+   then also create a file named `firebase-messaging-sw.js` at your site root with content shown below.
+   If you don't want closed-browser push, leave firebaseConfig.apiKey = '' (default).
+*/
+const firebaseConfig = {
+  apiKey: "",            // <-- fill from Firebase project settings to enable FCM
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "24163130777",
+  appId: ""
+};
+
+// Your Firebase Web Push VAPID key (copy from Firebase Console -> Cloud Messaging -> Web Push certificates)
+const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
+
+/* ============================
+   END CONFIG
+   ============================ */
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+/* Supabase client */
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
+
+/* DOM */
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
@@ -280,111 +110,342 @@ const sendBtn = document.getElementById('sendBtn');
 const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
 
+/* State */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
+const PENDING_KEY = 'chat_pending_v2';
+let pollTimer = null;
 
-function updateNetworkUI() {
+/* Network UI */
+function updateNetworkUI(){
   const online = navigator.onLine;
   statusEl.textContent = online ? 'Online' : 'Offline';
   statusEl.className = online ? 'online' : 'offline';
+  if(online) resendPending();
 }
 window.addEventListener('online', updateNetworkUI);
 window.addEventListener('offline', updateNetworkUI);
 updateNetworkUI();
 
-function escapeHtml(s) {
-  return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+/* Utilities */
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function formatTimestamp(ts){
+  if(!ts) return '??:??';
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return '??:??';
+  // show date + time compact (local)
+  return d.toLocaleString(undefined, { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
 }
-function fmtTime(ts) {
-  try {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-  } catch { return '??:??'; }
-}
-function flashNameMsg(txt) {
-  nameMsgEl.textContent = txt;
-  setTimeout(() => nameMsgEl.textContent = '', 2200);
-}
-function showError(msg) {
-  errorBox.textContent = msg;
-  setTimeout(() => { if (errorBox.textContent === msg) errorBox.textContent = ''; }, 3000);
-}
+function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
+function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=>nameMsgEl.textContent = '', 2400); }
 
-function displayMessageRow(row) {
+/* Display helper (supports message or text field names) */
+function displayMessageRow(row, { pending=false } = {}){
+  const username = row.username ?? row.user ?? 'Unknown';
+  const message = row.message ?? row.text ?? '';
+  const created_at = row.created_at ?? row.createdAt ?? new Date().toISOString();
+
   const div = document.createElement('div');
-  div.className = 'message';
-  div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>
-                   <span class="text">${escapeHtml(row.message)}</span>
-                   <span class="ts">[${fmtTime(row.created_at)}]</span>`;
+  div.className = 'message' + (pending ? ' pending' : '');
+  div.innerHTML = `<span class="username">${escapeHtml(username)}</span>
+                   <span class="text">${escapeHtml(message)}</span>
+                   <span class="ts">[${formatTimestamp(created_at)}]</span>`;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-async function loadMessages() {
-  try {
-    const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-    if (error) return;
+/* Pending queue (localStorage) */
+function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
+function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
+function removePending(obj){ const current = getPending(); const remaining = current.filter(x=>JSON.stringify(x)!==JSON.stringify(obj)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
+async function resendPending(){
+  const arr = getPending();
+  if(!arr.length) return;
+  for(const p of [...arr]){
+    try{
+      const { error } = await supabase.from('messages').insert([p]);
+      if(!error) removePending(p);
+    }catch(e){ console.error('resend failed', e); }
+  }
+}
+
+/* Load messages (canonical source) */
+async function loadMessages(){
+  try{
+    const { data, error } = await supabase.from('messages').select('id,username,message,created_at').order('created_at', { ascending: true });
+    if(error){
+      console.error('load error', error);
+      showError('Failed to load messages (check table/RLS).');
+      return;
+    }
     chatEl.innerHTML = '';
     data.forEach(displayMessageRow);
-  } catch {}
-}
-
-async function sendMessage() {
-  const txt = messageInput.value.trim();
-  if (!txt) return;
-  if (!currentUsername) return flashNameMsg('Set username first');
-  messageInput.value = '';
-  try {
-    await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
-  } catch { showError('Send failed'); }
-}
-
-async function isUsernameTakenInDB(name) {
-  try {
-    const { data } = await supabase.from('messages').select('id').eq('username', name).limit(1);
-    return data?.length > 0;
-  } catch { return true; }
-}
-
-saveNameBtn.addEventListener('click', async () => {
-  const name = usernameEl.value.trim();
-  if (!name) return flashNameMsg('Enter a username');
-  if (oldUsernames.includes(name)) {
-    currentUsername = name;
-    localStorage.setItem('chatUsername', name);
-    currentUsernameLabel.textContent = `Username: ${name}`;
-    return flashNameMsg('Switched to saved username');
+    // show pending after DB rows
+    getPending().forEach(p => displayMessageRow(p, { pending:true }));
+  } catch(e){
+    console.error('unexpected load error', e);
+    showError('Unexpected load error — check console.');
   }
-  if (await isUsernameTakenInDB(name)) {
-    flashNameMsg('Username already taken');
-    usernameEl.value = currentUsername;
+}
+
+/* Send message (optimistic + queue) */
+async function sendMessage(){
+  const txt = messageInput.value.trim();
+  if(!txt) return;
+  if(!currentUsername){ flashNameMsg('Set username first'); return; }
+
+  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+
+  // optimistic render (pending if offline)
+  displayMessageRow(row, { pending: !navigator.onLine });
+  messageInput.value = '';
+
+  if(!navigator.onLine){
+    addPending(row);
     return;
   }
+
+  try{
+    const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
+    if(error){
+      console.error('insert error', error);
+      addPending(row);
+      showError('Send failed; queued locally.');
+    }
+  }catch(e){
+    console.error('send exception', e);
+    addPending(row);
+    showError('Send exception; queued locally.');
+  }
+}
+
+/* Username handling */
+async function isUsernameTakenInDB(name){
+  try{
+    const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
+    if(error){ console.error('username check error', error); return true; }
+    return (data && data.length > 0);
+  }catch(e){ console.error(e); return true; }
+}
+
+saveNameBtn.addEventListener('click', async ()=>{
+  const name = usernameEl.value.trim();
+  if(!name){ flashNameMsg('Enter a username'); return; }
+
+  // allow switching back to a username you've used before locally
+  if(oldUsernames.includes(name)){
+    currentUsername = name;
+    localStorage.setItem('chatUsername', currentUsername);
+    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+    flashNameMsg('Switched to saved username');
+    return;
+  }
+
+  // otherwise check DB to avoid stealing someone else's name
+  const taken = await isUsernameTakenInDB(name);
+  if(taken){
+    flashNameMsg('Username already taken');
+    usernameEl.value = currentUsername || '';
+    return;
+  }
+
+  // accept and save
   currentUsername = name;
-  localStorage.setItem('chatUsername', name);
-  oldUsernames.push(name);
-  localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames));
-  currentUsernameLabel.textContent = `Username: ${name}`;
+  localStorage.setItem('chatUsername', currentUsername);
+  if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
   flashNameMsg('Username saved');
 });
 
-if (currentUsername) {
+/* Initialize username if present */
+if(currentUsername && currentUsername !== 'Guest'){
   usernameEl.value = currentUsername;
-  currentUsernameLabel.textContent = `Username: ${currentUsername}`;
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+} else {
+  currentUsername = ''; // require explicit save
+  currentUsernameLabel.textContent = 'Username: Guest';
 }
 
-sendBtn.addEventListener('click', sendMessage);
-messageInput.addEventListener('keydown', e => e.key === 'Enter' && sendMessage());
+/* Realtime subscription: on any insert, reload canonical list */
+async function subscribeRealtime(){
+  try{
+    supabase.removeAllChannels();
+    await supabase.channel('realtime-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        // notify user if tab hidden and permission granted
+        if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
+          // try to use service worker to show notification (blob SW registered below)
+          if(navigator.serviceWorker && navigator.serviceWorker.controller){
+            navigator.serviceWorker.controller.postMessage({type:'notify', title: `New from ${payload.new.username}`, body: payload.new.message ?? ''});
+          } else {
+            new Notification(`New from ${payload.new.username}`, { body: payload.new.message ?? '' });
+          }
+        }
+        // refresh canonical list
+        loadMessages();
+      })
+      .subscribe();
+  }catch(e){
+    console.error('subscribe error', e);
+    showError('Realtime subscribe failed (check console).');
+  }
+}
 
-// 🔄 Auto-refresh every 0.5s (super fast)
-setInterval(loadMessages, 500);
+/* Polling fallback for 0s feel (runs alongside realtime) */
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(loadMessages, 500); // 0.5s refresh -> feels instant
+}
 
-// Also realtime
-supabase.channel('realtime-messages')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
-    payload => displayMessageRow(payload.new))
-  .subscribe();
+/* Small blob service worker for in-page background notifications while browser runs */
+const blobSwCode = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => self.clients.claim());
+self.addEventListener('message', e => {
+  const d = e.data;
+  if(!d || d.type !== 'notify') return;
+  const title = d.title || 'New message';
+  const opts = { body: d.body || '', tag: 'supabase-chat-notify', renotify: true };
+  self.registration.showNotification(title, opts);
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type:'window' }).then(list => {
+    for(const w of list) if(w.visibilityState === 'visible') return w.focus();
+    return clients.openWindow('/');
+  }));
+});
+`;
 
-loadMessages();
+/* Register blob SW and (optionally) try to register firebase SW if present on server */
+async function registerSwAndMaybeFcm(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{
+    // blob SW for showing notifications while browser runs/backgrounded
+    const blob = new Blob([blobSwCode], { type: 'application/javascript' });
+    const blobUrl = URL.createObjectURL(blob);
+    await navigator.serviceWorker.register(blobUrl);
+    console.log('blob SW registered');
+
+    // If Firebase config provided (apiKey present), try to register firebase-messaging-sw.js from root
+    if(firebaseConfig.apiKey){
+      try{
+        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('firebase-messaging-sw.js registered at root:', reg.scope);
+        // now try to register with Firebase and get FCM token
+        await registerFcmToken(reg);
+      }catch(e){
+        console.warn('firebase SW registration failed - ensure firebase-messaging-sw.js exists at site root if you want closed-browser push.', e);
+      }
+    }
+  }catch(e){ console.warn('service worker registration failed', e); }
+}
+
+/* FCM: register and get token (requires firebaseConfig filled and firebase-messaging-sw.js present at root).
+   If you want closed-browser push, fill firebaseConfig above and create firebase-messaging-sw.js at root (instructions below).
+*/
+async function registerFcmToken(registration){
+  try{
+    if(!firebaseConfig.apiKey) return;
+    // dynamic import firebase libs
+    const [{ initializeApp }, { getMessaging, getToken, onMessage }] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js')
+    ]);
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+    // request permission
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ console.log('Notification permission not granted for FCM'); return; }
+    const token = await getToken(messaging, { vapidKey: FIREBASE_VAPID_KEY, serviceWorkerRegistration: registration });
+    console.log('FCM token:', token);
+    // Save token in Supabase table 'push_subscriptions' (you must create this table in SQL)
+    try{
+      await supabase.from('push_subscriptions').insert([{ token, created_at: new Date().toISOString() }]);
+      console.log('Saved FCM token to push_subscriptions (if table exists).');
+    }catch(e){ console.warn('Saving FCM token failed (create push_subscriptions table to save tokens)', e); }
+    // show foreground messages (optional)
+    onMessage(messaging, payload => {
+      const n = payload.notification;
+      if(n && Notification.permission === 'granted') new Notification(n.title, { body: n.body });
+    });
+  }catch(e){ console.warn('registerFcmToken error', e); }
+}
+
+/* Init */
+(async function init(){
+  await registerSwAndMaybeFcm();
+  if('Notification' in window && Notification.permission !== 'granted') try{ await Notification.requestPermission(); }catch(e){}
+  await loadMessages();
+  await subscribeRealtime();
+  startPolling();
+  // wire UI
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+  saveNameBtn.addEventListener('click', async () => { /* wired above */ });
+  window.addEventListener('online', resendPending);
+})();
+
+/* ---------------------------
+   Helpful SQL to run once in Supabase SQL Editor
+   ---------------------------
+-- 1) messages table
+create table if not exists public.messages (
+  id bigserial primary key,
+  username text not null,
+  message text not null,
+  created_at timestamptz default now() not null
+);
+
+-- 2) enable RLS and allow anon browser access (if using anon key)
+alter table public.messages enable row level security;
+
+create policy if not exists "public_select_messages" on public.messages
+  for select using (true);
+
+create policy if not exists "public_insert_messages" on public.messages
+  for insert with check (true);
+
+-- 3) (optional) push_subscriptions table for storing FCM tokens
+create table if not exists public.push_subscriptions (
+  id bigserial primary key,
+  token text not null,
+  created_at timestamptz default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+create policy if not exists "public_insert_subs" on public.push_subscriptions for insert with check (true);
+create policy if not exists "public_select_subs" on public.push_subscriptions for select using (true);
+---------------------------
+
+  If you want server-side push (when browser is fully closed), you'll:
+  1) Fill firebaseConfig above and create file 'firebase-messaging-sw.js' at your site root containing:
+     (replace firebaseConfig values with your project's)
+     ---------------------------------------------------------------------------
+     importScripts('https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js');
+     importScripts('https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging-compat.js');
+
+     firebase.initializeApp({
+       apiKey: "YOUR_API_KEY",
+       authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+       projectId: "YOUR_PROJECT_ID",
+       storageBucket: "YOUR_PROJECT_ID.appspot.com",
+       messagingSenderId: "24163130777",
+       appId: "YOUR_APP_ID"
+     });
+
+     const messaging = firebase.messaging();
+     messaging.onBackgroundMessage((payload) => {
+       const n = payload.notification;
+       if(n) self.registration.showNotification(n.title, { body: n.body });
+     });
+     ---------------------------------------------------------------------------
+  2) Register FCM tokens from clients (this HTML tries to save tokens to push_subscriptions)
+  3) Use a secure server (or Supabase Edge Function) to call FCM HTTP v1 API to send notifications to tokens
+     when a new message is inserted (you can trigger it from a DB trigger or an Edge Function).
+
+  If you want I'll provide the Edge Function / Node snippet to forward new messages to FCM using service account JSON.
+*/
 </script>
 </body>
 </html>
