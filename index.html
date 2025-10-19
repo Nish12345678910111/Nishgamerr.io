@@ -3,326 +3,24 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — by Nishgamer</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
-<style>
-  :root {
-    --bg-primary: #0a1122;
-    --bg-secondary: #060f20;
-    --bg-input: #0e1628;
-    --border: #263248;
-    --text-primary: #f1f5f9;
-    --text-secondary: #a0aec0;
-    --accent: #4f9cf9;
-    --button: #1e4dc8;
-    --error: #f87171;
-    --online: #10b981;
-    --offline: #ef4444;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --radius: 10px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 32px 16px;
-    line-height: 1.6;
-  }
-
-  .wrap {
-    width: 100%;
-    max-width: 800px;
-  }
-
-  h1 {
-    text-align: center;
-    color: var(--accent);
-    font-size: clamp(1.5rem, 5vw, 2rem);
-    font-weight: 700;
-    margin: 0 0 20px;
-    letter-spacing: -0.025em;
-  }
-
-  .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  #currentUsername {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  #username {
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    border-radius: var(--radius);
-    width: clamp(180px, 100%, 220px);
-    font-size: 0.9rem;
-    transition: var(--transition);
-  }
-
-  #username:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
-  }
-
-  #saveName {
-    background: var(--button);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: var(--radius);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #saveName:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-  }
-
-  #saveName:active {
-    transform: translateY(0);
-  }
-
-  #chat {
-    background: var(--bg-secondary);
-    border-radius: var(--radius);
-    padding: 20px;
-    height: clamp(300px, 60vh, 480px);
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    margin-bottom: 16px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--accent) var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar {
-    width: 10px;
-  }
-
-  #chat::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: var(--radius);
-  }
-
-  .message {
-    margin-bottom: 14px;
-    font-size: 0.95rem;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .username {
-    color: var(--accent);
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .ts {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    flex-shrink: 0;
-  }
-
-  #controls {
-    display: flex;
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  #messageInput {
-    flex: 1;
-    padding: 14px;
-    border-radius: var(--radius);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    font-size: 0.9rem;
-    transition: var(--transition);
-  }
-
-  #messageInput:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
-  }
-
-  #sendBtn {
-    padding: 14px 22px;
-    background: var(--button);
-    border: none;
-    border-radius: var(--radius);
-    color: white;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #sendBtn:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-  }
-
-  #sendBtn:active {
-    transform: translateY(0);
-  }
-
-  #nameMsg {
-    color: var(--error);
-    font-size: 0.9rem;
-    margin-top: 10px;
-    min-height: 1.2em;
-  }
-
-  .pending {
-    opacity: 0.65;
-    font-style: italic;
-  }
-
-  #status {
-    position: fixed;
-    right: 20px;
-    top: 20px;
-    padding: 10px 16px;
-    border-radius: var(--radius);
-    font-size: 0.8rem;
-    font-weight: 700;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-  }
-
-  .online {
-    background: var(--online);
-    color: white;
-  }
-
-  .offline {
-    background: var(--offline);
-    color: white;
-  }
-
-  #errorBox {
-    margin-top: 12px;
-    color: var(--error);
-    font-size: 0.9rem;
-    min-height: 1.2em;
-  }
-
-  @media (max-width: 600px) {
-    body { padding: 16px; }
-    .wrap { max-width: 100%; }
-    h1 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
-    #chat { height: clamp(250px, 50vh, 380px); }
-    #username { width: 100%; }
-    .top { flex-direction: column; align-items: flex-start; gap: 12px; }
-    #saveName, #sendBtn { padding: 10px 16px; }
-    #status { right: 12px; top: 12px; padding: 8px 12px; }
-  }
-</style>
-</head>
-<body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat App</h1>
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color: var(--text-secondary)">Dark • Realtime</div>
-    </div>
-    <div id="chat" role="log" aria-live="polite"></div>
-    <div id="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div id="errorBox"></div>
-  </div>
-
-<script type="module">
-const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
-
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const nameMsgEl = document.getElementById('nameMsg');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
-
-let currentUsername = localStorage.getItem('chatUsername') || '';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-
-function updateNetworkUI() {
-  const online = navigator.onLine;
-  statusEl.textContent = online ? 'Online' : 'Offline';
-  statusEl.className = online ? 'online' : 'offline';
-  if (online) resendPending();
-}
-window.addEventListener('online', updateNetworkUI);
-window.addEventListener('offline', updateNetworkUI);
-updateNetworkUI();
-
-function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
-function fmtTime(ts) { return !ts ? '??:??' : isNaN(new Date(ts)) ? '??:??' : new Date(ts).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }); }
-function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (errorBox.textContent === msg) errorBox.textContent = ''; }, 4000); }
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chat — Supabase Realtime</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
   :root {
-    --bg-primary: #0a1122;
-    --bg-secondary: #060f20;
-    --bg-input: #0e1628;
-    --border: #263248;
-    --text-primary: #f1f5f9;
-    --text-secondary: #a0aec0;
-    --accent: #4f9cf9;
-    --button: #1e4dc8;
-    --error: #f87171;
-    --online: #10b981;
-    --offline: #ef4444;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --radius: 10px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --bg-primary: #0b1220;
+    --bg-secondary: #071127;
+    --bg-input: #0f1724;
+    --border: #1f2937;
+    --text-primary: #e6eef8;
+    --text-secondary: #94a3b8;
+    --accent: #60a5fa;
+    --button: #2563eb;
+    --error: #fb7185;
+    --online: #16a34a;
+    --offline: #dc2626;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --radius: 8px;
+    --transition: all 0.2s ease;
   }
 
   body {
@@ -331,38 +29,40 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     display: flex;
     justify-content: center;
+    align-items: flex-start;
     min-height: 100vh;
     margin: 0;
-    padding: 32px 16px;
-    line-height: 1.6;
+    padding: 24px;
+    line-height: 1.5;
   }
 
   .wrap {
     width: 100%;
-    max-width: 800px;
+    max-width: 768px;
+    margin: 0 auto;
   }
 
   h1 {
     text-align: center;
     color: var(--accent);
-    font-size: clamp(1.5rem, 5vw, 2rem);
-    font-weight: 700;
-    margin: 0 0 20px;
-    letter-spacing: -0.025em;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
   }
 
   .top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
   }
 
   #currentUsername {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     font-weight: 500;
   }
 
@@ -370,35 +70,33 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
     background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    padding: 10px 14px;
+    padding: 8px 12px;
     border-radius: var(--radius);
-    width: clamp(180px, 100%, 220px);
-    font-size: 0.9rem;
+    width: 200px;
+    font-size: 0.875rem;
     transition: var(--transition);
   }
 
   #username:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
   }
 
   #saveName {
     background: var(--button);
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: var(--radius);
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.875rem;
     cursor: pointer;
     transition: var(--transition);
   }
 
   #saveName:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    background: #1d4ed8;
+    transform: translateY(-1px);
   }
 
   #saveName:active {
@@ -408,18 +106,18 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
   #chat {
     background: var(--bg-secondary);
     border-radius: var(--radius);
-    padding: 20px;
-    height: clamp(300px, 60vh, 480px);
+    padding: 16px;
+    height: 450px;
     overflow-y: auto;
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--accent) var(--bg-secondary);
   }
 
   #chat::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
   }
 
   #chat::-webkit-scrollbar-track {
@@ -432,64 +130,62 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
   }
 
   .message {
-    margin-bottom: 14px;
-    font-size: 0.95rem;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   }
 
   .username {
     color: var(--accent);
-    font-weight: 700;
+    font-weight: 600;
     flex-shrink: 0;
   }
 
   .ts {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     flex-shrink: 0;
   }
 
   #controls {
     display: flex;
-    gap: 12px;
-    margin-top: 16px;
+    gap: 10px;
+    margin-top: 12px;
   }
 
   #messageInput {
     flex: 1;
-    padding: 14px;
+    padding: 12px;
     border-radius: var(--radius);
     background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     transition: var(--transition);
   }
 
   #messageInput:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
   }
 
   #sendBtn {
-    padding: 14px 22px;
+    padding: 12px 18px;
     background: var(--button);
     border: none;
     border-radius: var(--radius);
     color: white;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.875rem;
     cursor: pointer;
     transition: var(--transition);
   }
 
   #sendBtn:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    background: #1d4ed8;
+    transform: translateY(-1px);
   }
 
   #sendBtn:active {
@@ -498,24 +194,24 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
 
   #nameMsg {
     color: var(--error);
-    font-size: 0.9rem;
-    margin-top: 10px;
+    font-size: 0.85rem;
+    margin-top: 8px;
     min-height: 1.2em;
   }
 
   .pending {
-    opacity: 0.65;
+    opacity: 0.7;
     font-style: italic;
   }
 
   #status {
     position: fixed;
-    right: 20px;
-    top: 20px;
-    padding: 10px 16px;
+    right: 16px;
+    top: 16px;
+    padding: 8px 12px;
     border-radius: var(--radius);
-    font-size: 0.8rem;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: 600;
     box-shadow: var(--shadow);
     transition: var(--transition);
   }
@@ -531,389 +227,19 @@ function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (err
   }
 
   #errorBox {
-    margin-top: 12px;
-    color: var(--error);
-    font-size: 0.9rem;
-    min-height: 1.2em;
-  }
-
-  @media (max-width: 600px) {
-    body { padding: 16px; }
-    .wrap { max-width: 100%; }
-    h1 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
-    #chat { height: clamp(250px, 50vh, 380px); }
-    #username { width: 100%; }
-    .top { flex-direction: column; align-items: flex-start; gap: 12px; }
-    #saveName, #sendBtn { padding: 10px 16px; }
-    #status { right: 12px; top: 12px; padding: 8px 12px; }
-  }
-</style>
-</head>
-<body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat App</h1>
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color: var(--text-secondary)">Dark • Realtime</div>
-    </div>
-    <div id="chat" role="log" aria-live="polite"></div>
-    <div id="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
-    </div>
-    <div id="errorBox"></div>
-  </div>
-
-<script type="module">
-const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
-
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const nameMsgEl = document.getElementById('nameMsg');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
-
-let currentUsername = localStorage.getItem('chatUsername') || '';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-let lastSentMessage = null;
-
-function updateNetworkUI() {
-  const online = navigator.onLine;
-  statusEl.textContent = online ? 'Online' : 'Offline';
-  statusEl.className = online ? 'online' : 'offline';
-  if (online) resendPending();
-}
-window.addEventListener('online', updateNetworkUI);
-window.addEventListener('offline', updateNetworkUI);
-updateNetworkUI();
-
-function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
-function fmtTime(ts) { return !ts ? '??:??' : isNaN(new Date(ts)) ? '??:??' : new Date(ts).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }); }
-function showError(msg) { errorBox.textContent = msg; setTimeout(() => { if (errorBox.textContent === msg) errorBox.textContent = ''; }, 4000); }
-function flashNameMsg(txt) { nameMsgEl.textContent = txt; setTimeout(() => nameMsgEl.textContent = '', 2200); }
-
-function displayMessageRow(row, { pending = false } = {}) {
-  const div = document.createElement('div');
-  div.className = `message${pending ? ' pending' : ''}`;
-  div.innerHTML = `<span class="username">${escapeHtml(row.username ?? row.user ?? 'Unknown')}</span>
-                   <span class="text">${escapeHtml(row.message ?? row.text ?? '')}</span>
-                   <span class="ts">[${fmtTime(row.created_at ?? row.createdAt ?? new Date().toISOString())}]</span>`;
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
-
-const PENDING_KEY = 'chat_pending_v1';
-function getPending() { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
-function addPending(obj) { const a = getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
-function removePendingItem(m) { localStorage.setItem(PENDING_KEY, JSON.stringify(getPending().filter(x => JSON.stringify(x) !== JSON.stringify(m)))); }
-async function resendPending() {
-  for (const p of getPending()) {
-    try {
-      const { error } = await supabase.from('messages').insert([p]);
-      if (!error) removePendingItem(p);
-    } catch {}
-  }
-}
-
-async function loadMessages() {
-  try {
-    const { data, error } = await supabase.from('messages').select().order('created_at', { ascending: true });
-    if (error) return showError('Failed to load messages.');
-    chatEl.innerHTML = '';
-    data.forEach(displayMessageRow);
-    getPending().forEach(p => displayMessageRow(p, { pending: true }));
-  } catch { showError('Unexpected load error.'); }
-}
-
-async function sendMessage() {
-  const txt = messageInput.value.trim();
-  if (!txt || !currentUsername) return !txt ? null : flashNameMsg('Set username first');
-  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-  if (!navigator.onLine) {
-    addPending(row);
-    displayMessageRow(row, { pending: true });
-  } else {
-    lastSentMessage = row;
-    try {
-      const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
-      if (error) throw error;
-    } catch {
-      addPending(row);
-      displayMessageRow(row, { pending: true });
-      showError('Send error; queued locally.');
-    }
-  }
-  messageInput.value = '';
-}
-
-async function isUsernameTakenInDB(name) {
-  try {
-    const { data } = await supabase.from('messages').select('id').eq('username', name).limit(1);
-    return data?.length > 0;
-  } catch { return true; }
-}
-
-saveNameBtn.addEventListener('click', async () => {
-  const name = usernameEl.value.trim();
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — by Nishgamer</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
-<style>
-  :root {
-    --bg-primary: #0a1122;
-    --bg-secondary: #060f20;
-    --bg-input: #0e1628;
-    --border: #263248;
-    --text-primary: #f1f5f9;
-    --text-secondary: #a0aec0;
-    --accent: #4f9cf9;
-    --button: #1e4dc8;
-    --error: #f87171;
-    --online: #10b981;
-    --offline: #ef4444;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --radius: 10px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 32px 16px;
-    line-height: 1.6;
-  }
-
-  .wrap {
-    width: 100%;
-    max-width: 800px;
-  }
-
-  h1 {
-    text-align: center;
-    color: var(--accent);
-    font-size: clamp(1.5rem, 5vw, 2rem);
-    font-weight: 700;
-    margin: 0 0 20px;
-    letter-spacing: -0.025em;
-  }
-
-  .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  #currentUsername {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  #username {
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    border-radius: var(--radius);
-    width: clamp(180px, 100%, 220px);
-    font-size: 0.9rem;
-    transition: var(--transition);
-  }
-
-  #username:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
-  }
-
-  #saveName {
-    background: var(--button);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: var(--radius);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #saveName:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-  }
-
-  #saveName:active {
-    transform: translateY(0);
-  }
-
-  #chat {
-    background: var(--bg-secondary);
-    border-radius: var(--radius);
-    padding: 20px;
-    height: clamp(300px, 60vh, 480px);
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    margin-bottom: 16px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--accent) var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar {
-    width: 10px;
-  }
-
-  #chat::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-  }
-
-  #chat::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: var(--radius);
-  }
-
-  .message {
-    margin-bottom: 14px;
-    font-size: 0.95rem;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .username {
-    color: var(--accent);
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .ts {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    flex-shrink: 0;
-  }
-
-  #controls {
-    display: flex;
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  #messageInput {
-    flex: 1;
-    padding: 14px;
-    border-radius: var(--radius);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    font-size: 0.9rem;
-    transition: var(--transition);
-  }
-
-  #messageInput:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px rgba(79, 156, 249, 0.25);
-  }
-
-  #sendBtn {
-    padding: 14px 22px;
-    background: var(--button);
-    border: none;
-    border-radius: var(--radius);
-    color: white;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-
-  #sendBtn:hover {
-    background: #1e40af;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-  }
-
-  #sendBtn:active {
-    transform: translateY(0);
-  }
-
-  #nameMsg {
-    color: var(--error);
-    font-size: 0.9rem;
     margin-top: 10px;
-    min-height: 1.2em;
-  }
-
-  .pending {
-    opacity: 0.65;
-    font-style: italic;
-  }
-
-  #status {
-    position: fixed;
-    right: 20px;
-    top: 20px;
-    padding: 10px 16px;
-    border-radius: var(--radius);
-    font-size: 0.8rem;
-    font-weight: 700;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-  }
-
-  .online {
-    background: var(--online);
-    color: white;
-  }
-
-  .offline {
-    background: var(--offline);
-    color: white;
-  }
-
-  #errorBox {
-    margin-top: 12px;
     color: var(--error);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     min-height: 1.2em;
   }
 
   @media (max-width: 600px) {
     body { padding: 16px; }
     .wrap { max-width: 100%; }
-    h1 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
-    #chat { height: clamp(250px, 50vh, 380px); }
-    #username { width: 100%; }
-    .top { flex-direction: column; align-items: flex-start; gap: 12px; }
-    #saveName, #sendBtn { padding: 10px 16px; }
-    #status { right: 12px; top: 12px; padding: 8px 12px; }
+    h1 { font-size: 1.5rem; }
+    #chat { height: 350px; }
+    #username { width: 100%; max-width: 200px; }
+    .top { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
@@ -928,7 +254,7 @@ saveNameBtn.addEventListener('click', async () => {
         <button id="saveName">Save</button>
         <div id="nameMsg"></div>
       </div>
-      <div style="color: var(--text-secondary)">Dark • Realtime</div>
+      <div style="color:#94a3b8">Dark • Realtime</div>
     </div>
     <div id="chat" role="log" aria-live="polite"></div>
     <div id="controls">
@@ -1074,41 +400,6 @@ async function subscribeRealtime() {
         }
         displayMessageRow(newMsg);
       })
-      .subscribe();
-  } catch { showError('Realtime subscription failed.'); }
-}
-
-(async () => {
-  await loadMessages();
-  await subscribeRealtime();
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keydown', e => e.key === 'Enter' && sendMessage());
-  window.addEventListener('online', resendPending);
-})();
-</script>
-</body>
-</html>  if (await isUsernameTakenInDB(name)) {
-    flashNameMsg('Username already taken');
-    usernameEl.value = currentUsername;
-    return;
-  }
-  currentUsername = name;
-  localStorage.setItem('chatUsername', name);
-  oldUsernames.push(name);
-  localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames));
-  currentUsernameLabel.textContent = `Username: ${name}`;
-  flashNameMsg('Username saved');
-});
-
-if (currentUsername) {
-  usernameEl.value = currentUsername;
-  currentUsernameLabel.textContent = `Username: ${currentUsername}`;
-}
-
-async function subscribeRealtime() {
-  try {
-    await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => displayMessageRow(payload.new))
       .subscribe();
   } catch { showError('Realtime subscription failed.'); }
 }
