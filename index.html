@@ -271,7 +271,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { 
   realtime: { 
     timeout: 15000,
-    params: { eventsPerSecond: 100 } // Optimize for high-frequency updates
+    params: { eventsPerSecond: 100 }
   } 
 });
 
@@ -394,7 +394,9 @@ if (currentUsername) {
 
 async function subscribeRealtime() {
   try {
-    await supabase.channel('realtime-messages', { config: { broadcast: { ack: true } } })
+    await supabase.removeAllSubscriptions(); // Clear any existing subscriptions
+    const channel = supabase.channel(`realtime-messages-${Date.now()}`, { config: { broadcast: { ack: true } } });
+    channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         const newMsg = payload.new;
         if (lastSentMessage && 
@@ -405,7 +407,9 @@ async function subscribeRealtime() {
         }
         displayMessageRow(newMsg);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') showError('Realtime connection issue.');
+      });
   } catch { showError('Realtime subscription failed.'); }
 }
 
