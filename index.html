@@ -6,7 +6,6 @@
 <title>Modern Chat</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
-  /* GUI preserved exactly (compact) */
   body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px; margin:0; }
   .wrap { width:100%; max-width:720px; }
   h1 { text-align:center; color:#60a5fa; margin-bottom:8px; font-size:1.2rem; }
@@ -67,16 +66,13 @@
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-/* ---------------- CONFIG ----------------
-   Your Supabase project URL and anon key
----------------------------------------- */
+// ======= CONFIG =======
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-/* ---------------------------------------- */
+// =====================
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout:15000 } });
 
-/* DOM */
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
@@ -91,7 +87,6 @@ const autoScrollBtn = document.getElementById('autoScrollBtn');
 const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
 
-/* State */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
 let autoScroll = localStorage.getItem('autoScroll') !== 'false';
@@ -101,463 +96,92 @@ let deviceIp = null;
 let realtimeConnected = false;
 let realtimeRetryCount = 0;
 const maxRealtimeRetries = 8;
-
-/* Owned ids fallback */
 const OWNED_IDS_KEY = 'owned_message_ids_v1';
+const PENDING_KEY = 'chat_pending_v3';
+
 function getOwnedIds(){ return JSON.parse(localStorage.getItem(OWNED_IDS_KEY) || '[]'); }
 function addOwnedId(id){ const a = getOwnedIds(); if(!a.includes(String(id))) a.push(String(id)); localStorage.setItem(OWNED_IDS_KEY, JSON.stringify(a)); }
 function removeOwnedId(id){ const a = getOwnedIds().filter(x => String(x) !== String(id)); localStorage.setItem(OWNED_IDS_KEY, JSON.stringify(a)); }
-
-/* Pending queue */
-const PENDING_KEY = 'chat_pending_v3';
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
 function setPending(arr){ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
 function addPending(obj){ const a = getPending(); a.push(obj); setPending(a); }
 function removePending(obj){ const a = getPending().filter(x => JSON.stringify(x) !== JSON.stringify(obj)); setPending(a); }
 
-/* Helpers */
-function escapeHtml(s){ return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function fmtTime(ts){ try{ return new Date(ts).toLocaleString(); } catch { return '??:??'; } }
-function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent === msg) errorBox.textContent = ''; }, 3500); }
-function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent = '', 2200); }
-function updateAutoScrollBtn(){ autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`; autoScrollBtn.style.background = autoScroll ? '#2563eb' : '#475569'; }
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function fmtTime(ts){ try{ return new Date(ts).toLocaleString(); }catch{ return '??:??'; } }
+function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },3500); }
+function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent='',2200); }
+function updateAutoScrollBtn(){ autoScrollBtn.textContent=`Auto Scroll: ${autoScroll?'ON':'OFF'}`; autoScrollBtn.style.background=autoScroll?'#2563eb':'#475569'; }
+function setStatusOffline(){ statusEl.textContent='Offline'; statusEl.className='offline'; }
+function setStatusOnline(){ statusEl.textContent='Online'; statusEl.className='online'; }
+function setStatusRealtime(){ statusEl.textContent='Realtime'; statusEl.className='online'; }
+function setRealtimeConnected(connected){ realtimeConnected=!!connected; if(!navigator.onLine){ setStatusOffline(); return; } if(realtimeConnected) setStatusRealtime(); else setStatusOnline(); }
+function updateNetworkUI(){ if(!navigator.onLine){ setStatusOffline(); realtimeConnected=false; } else setRealtimeConnected(realtimeConnected); }
 
-/* Network / status functions (robust) */
-function setStatusOffline(){ statusEl.textContent = 'Offline'; statusEl.className = 'offline'; }
-function setStatusOnline(){ statusEl.textContent = 'Online'; statusEl.className = 'online'; }
-function setStatusRealtime(){ statusEl.textContent = 'Realtime'; statusEl.className = 'online'; }
+window.addEventListener('online',()=>{ updateNetworkUI(); initRealtime(); resendPending(); });
+window.addEventListener('offline',()=>{ updateNetworkUI(); realtimeConnected=false; });
 
-function setRealtimeConnected(connected){
-  realtimeConnected = !!connected;
-  if(!navigator.onLine){
-    setStatusOffline();
-    return;
-  }
-  if(realtimeConnected) setStatusRealtime();
-  else setStatusOnline();
-}
-function updateNetworkUI(){ if(!navigator.onLine){ setStatusOffline(); realtimeConnected = false; } else setRealtimeConnected(realtimeConnected); }
+async function fetchIP(){ try{ const r=await fetch('https://api.ipify.org?format=json'); if(!r.ok) return null; const j=await r.json(); return j.ip; }catch(e){ console.warn('fetchIP failed',e); return null; } }
 
-window.addEventListener('online', () => { updateNetworkUI(); initRealtime(); resendPending(); });
-window.addEventListener('offline', () => { updateNetworkUI(); realtimeConnected = false; });
+function displayMessageRow(row,{pending=false}={}){ if(row.id && chatEl.querySelector(`[data-id='${row.id}']`)) return; if(!row.id){ const pendingNodes=Array.from(chatEl.querySelectorAll('.message.pending')); if(pendingNodes.some(n=>n.dataset.pending===`${row.username}|${row.message}|${row.created_at}`)) return; } const username=row.username??'Unknown'; const message=row.message??''; const created_at=row.created_at??new Date().toISOString(); const wrapper=document.createElement('div'); wrapper.className='message'+(pending?' pending':''); if(row.id) wrapper.dataset.id=String(row.id); if(pending) wrapper.dataset.pending=`${username}|${message}|${created_at}`; const info=document.createElement('div'); info.className='info'; info.innerHTML=`<span class="username">${escapeHtml(username)}</span><span class="text">${escapeHtml(message)}</span><span class="ts">[${fmtTime(created_at)}]</span>`; wrapper.appendChild(info); const ownedByThisDevice=(row.device_id && row.device_id===deviceId)||(row.id && getOwnedIds().includes(String(row.id))); if(ownedByThisDevice){ const delBtn=document.createElement('button'); delBtn.className='delBtn'; delBtn.title='Delete message'; delBtn.textContent='×'; delBtn.onclick=async(e)=>{ e.stopPropagation(); await deleteMessage(row,wrapper); }; wrapper.appendChild(delBtn); } else{ const spacer=document.createElement('div'); spacer.style.width='22px'; wrapper.appendChild(spacer); } chatEl.appendChild(wrapper); if(autoScroll) chatEl.scrollTop=chatEl.scrollHeight; }
 
-/* Get public IP (non-blocking) */
-async function fetchIP(){
-  try{
-    const r = await fetch('https://api.ipify.org?format=json');
-    if(!r.ok) return null;
-    const j = await r.json();
-    return j.ip;
-  }catch(e){ console.warn('fetchIP failed', e); return null; }
-}
+async function loadMessages(){ try{ const { data,error } = await supabase.from('messages').select('id,username,message,created_at,device_id').order('created_at',{ascending:true}); if(error){ console.warn('select failed',error); const { data:d2,error:e2 } = await supabase.from('messages').select('id,username,message,created_at').order('created_at',{ascending:true}); if(e2){ console.error('load fallback error',e2); showError('Load failed'); return; } chatEl.innerHTML=''; d2.forEach(r=>displayMessageRow(r)); getPending().forEach(p=>displayMessageRow(p,{pending:true})); return; } chatEl.innerHTML=''; data.forEach(r=>displayMessageRow(r)); getPending().forEach(p=>displayMessageRow(p,{pending:true})); }catch(e){ console.error('loadMessages exception',e); showError('Load exception'); } }
 
-/* Service Worker blob for notifications */
-const swCode = `
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => self.clients.claim());
-self.addEventListener('message', e => {
-  const d = e.data;
-  if(!d || d.type !== 'notify') return;
-  const title = d.title || 'New message';
-  const opts = { body: d.body || '', tag: 'chat-notify', renotify: true };
-  self.registration.showNotification(title, opts);
-});
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(clients.matchAll({ type:'window' }).then(list => {
-    for(const w of list) if(w.visibilityState === 'visible') return w.focus();
-    return clients.openWindow('/');
-  }));
-});
-`;
-async function registerBlobSW(){ if(!('serviceWorker' in navigator)) return null; try{ const blob = new Blob([swCode], { type:'application/javascript' }); const url = URL.createObjectURL(blob); const reg = await navigator.serviceWorker.register(url); return reg; } catch(e){ console.warn('sw register failed', e); return null; } }
-async function ensureNotificationPermission(){ if('Notification' in window && Notification.permission !== 'granted'){ try{ await Notification.requestPermission(); } catch(e){ console.warn(e); } } }
+async function resendPending(){ const arr=getPending(); if(!arr.length) return; for(const p of [...arr]){ try{ const { data,error } = await supabase.from('messages').insert([p]).select().maybeSingle(); if(!error && data){ removePending(p); if(data.id) addOwnedId(String(data.id)); const pendingNodes=Array.from(chatEl.querySelectorAll('.message.pending')); for(const n of pendingNodes){ if(n.dataset.pending===`${p.username}|${p.message}|${p.created_at}`) n.remove(); } displayMessageRow(data); } }catch(e){ console.warn('resend error',e); } } }
 
-/* Display message rows (delete only if owned) */
-function displayMessageRow(row, { pending=false } = {}){
-  if(row.id && chatEl.querySelector(`[data-id='${row.id}']`)) return; // dedupe
-  // pending dedupe
-  if(!row.id){
-    const pendingNodes = Array.from(chatEl.querySelectorAll('.message.pending'));
-    if(pendingNodes.some(n => n.dataset.pending === `${row.username}|${row.message}|${row.created_at}`)) return;
-  }
+async function sendMessage(){ const txt=messageInput.value.trim(); if(!txt) return; if(!currentUsername){ flashNameMsg('Set username first'); return; } const row={ username:currentUsername,message:txt,device_id:deviceId,created_at:new Date().toISOString() }; displayMessageRow(row,{pending:!navigator.onLine}); messageInput.value=''; if(!navigator.onLine){ addPending(row); return; } try{ const { data,error } = await supabase.from('messages').insert([row]).select().maybeSingle(); if(error){ const errStr=String(error.message||error.details||'').toLowerCase(); if(errStr.includes('column')&&errStr.includes('device_id')||error.code==='42703'){ const { data:d2,error:e2 } = await supabase.from('messages').insert([{username:currentUsername,message:txt,created_at:row.created_at}]).select().maybeSingle(); if(e2){ addPending({username:currentUsername,message:txt,created_at:row.created_at}); showError('Send failed; queued locally.'); return; } if(d2&&d2.id) addOwnedId(String(d2.id)); const nodes=Array.from(chatEl.querySelectorAll('.message.pending')); for(const n of nodes){ if(n.dataset.pending===`${currentUsername}|${txt}|${row.created_at}`) n.remove(); } displayMessageRow(d2); return; } else{ addPending({username:currentUsername,message:txt,created_at:row.created_at}); showError('Send failed; queued locally.'); return; } } if(data){ const nodes=Array.from(chatEl.querySelectorAll('.message.pending')); for(const n of nodes){ if(n.dataset.pending===`${currentUsername}|${txt}|${row.created_at}`) n.remove(); } if(data.id&&!data.device_id) addOwnedId(String(data.id)); displayMessageRow(data); } }catch(ex){ console.error('send exception',ex); addPending({username:currentUsername,message:txt,created_at:row.created_at}); showError('Send exception; queued locally.'); } }
 
-  const username = row.username ?? 'Unknown';
-  const message = row.message ?? '';
-  const created_at = row.created_at ?? new Date().toISOString();
+async function deleteMessage(row,domNode){ if(!row||!row.id){ showError('Cannot delete: missing id'); return; } const owned=getOwnedIds().includes(String(row.id)); if(!owned && row.device_id!==deviceId){ showError('Cannot delete: not yours'); return; } try{ const { error } = await supabase.from('messages').delete().match({id:row.id,device_id:deviceId}); if(error){ console.error('delete error',error); showError('Delete failed'); return; } domNode.remove(); removeOwnedId(String(row.id)); }catch(e){ console.error('delete exception',e); showError('Delete failed'); } }
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'message' + (pending ? ' pending' : '');
-  if(row.id) wrapper.dataset.id = String(row.id);
-  if(pending) wrapper.dataset.pending = `${username}|${message}|${created_at}`;
+async function deleteAllMyMessages(){ if(!confirm('Delete all messages posted by this device?')) return; try{ const { error } = await supabase.from('messages').delete().eq('device_id',deviceId); if(!error){ const ownedIds=getOwnedIds(); Array.from(chatEl.children).forEach(node=>{ const id=node.dataset.id; if(id && ownedIds.includes(String(id))) node.remove(); }); localStorage.removeItem(OWNED_IDS_KEY); return; } }catch(e){ console.error('deleteAll exception',e); showError('Delete all failed'); } }
 
-  const info = document.createElement('div');
-  info.className = 'info';
-  info.innerHTML = `<span class="username">${escapeHtml(username)}</span>
-                    <span class="text">${escapeHtml(message)}</span>
-                    <span class="ts">[${fmtTime(created_at)}]</span>`;
-  wrapper.appendChild(info);
+async function tryRegisterUsername(name){ if(!deviceIp) deviceIp=await fetchIP(); try{ const ins=await supabase.from('user_ips').insert([{username:name,device_id:deviceId,ip_address:deviceIp,created_at:new Date().toISOString()}]); if(ins.error){ console.error('register username error',ins.error); flashNameMsg('Registration failed'); return false; } deviceNote.textContent=`Registered on device: ${deviceId}, IP: ${deviceIp??'unknown'}`; return true; }catch(e){ console.error(e); flashNameMsg('Registration error'); return false; } }
 
-  const ownedByThisDevice = (row.device_id && row.device_id === deviceId) || (row.id && getOwnedIds().includes(String(row.id)));
-  if(ownedByThisDevice){
-    const delBtn = document.createElement('button');
-    delBtn.className = 'delBtn';
-    delBtn.title = 'Delete message';
-    delBtn.textContent = '×';
-    delBtn.onclick = async (e) => { e.stopPropagation(); await deleteMessage(row, wrapper); };
-    wrapper.appendChild(delBtn);
-  } else {
-    const spacer = document.createElement('div'); spacer.style.width = '22px'; wrapper.appendChild(spacer);
-  }
-
-  chatEl.appendChild(wrapper);
-  if(autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
-}
-
-/* Load messages (try select device_id; fallback if missing) */
-async function loadMessages(){
-  try{
-    const { data, error } = await supabase
-      .from('messages')
-      .select('id, username, message, created_at, device_id')
-      .order('created_at', { ascending: true });
-
-    if(error){
-      // fallback to no device_id column
-      console.warn('select with device_id failed, fallback', error);
-      const { data: d2, error: e2 } = await supabase
-        .from('messages')
-        .select('id, username, message, created_at')
-        .order('created_at', { ascending: true });
-      if(e2){ console.error('load fallback error', e2); showError('Load failed (DB).'); return; }
-      chatEl.innerHTML = '';
-      d2.forEach(r => displayMessageRow(r));
-      getPending().forEach(p => displayMessageRow(p, { pending: true }));
-      return;
-    }
-
-    chatEl.innerHTML = '';
-    data.forEach(r => displayMessageRow(r));
-    getPending().forEach(p => displayMessageRow(p, { pending: true }));
-  } catch(e){
-    console.error('loadMessages exception', e);
-    showError('Load exception — see console.');
-  }
-}
-
-/* Pending resend */
-async function resendPending(){
-  const arr = getPending();
-  if(!arr.length) return;
-  for(const p of [...arr]){
-    try{
-      const { data, error } = await supabase.from('messages').insert([p]).select().maybeSingle();
-      if(!error && data){
-        removePending(p);
-        if(data.id) addOwnedId(String(data.id));
-        const pendingNodes = Array.from(chatEl.querySelectorAll('.message.pending'));
-        for(const n of pendingNodes){
-          if(n.dataset.pending === `${p.username}|${p.message}|${p.created_at}`) n.remove();
-        }
-        displayMessageRow(data);
-      }
-    } catch(e){ console.warn('resend error', e); }
-  }
-}
-
-/* Send message (with device_id preferred) */
-async function sendMessage(){
-  const txt = messageInput.value.trim();
-  if(!txt) return;
-  if(!currentUsername){ flashNameMsg('Set username first'); return; }
-
-  const row = { username: currentUsername, message: txt, device_id: deviceId, created_at: new Date().toISOString() };
-
-  // optimistic
-  displayMessageRow(row, { pending: !navigator.onLine });
-  messageInput.value = '';
-
-  if(!navigator.onLine){
-    addPending(row);
-    return;
-  }
-
-  try{
-    const { data, error } = await supabase.from('messages').insert([row]).select().maybeSingle();
-    if(error){
-      const errStr = String(error.message || error.details || '').toLowerCase();
-      console.warn('insert error', error);
-      if(errStr.includes('column') && errStr.includes('device_id') || error.code === '42703'){
-        // fallback: insert without device_id
-        try{
-          const { data: d2, error: e2 } = await supabase.from('messages').insert([{ username: currentUsername, message: txt, created_at: row.created_at }]).select().maybeSingle();
-          if(e2){
-            console.error('fallback insert error', e2);
-            addPending({ username: currentUsername, message: txt, created_at: row.created_at });
-            showError('Send failed; queued locally.');
-            return;
-          }
-          if(d2 && d2.id) addOwnedId(String(d2.id));
-          const nodes = Array.from(chatEl.querySelectorAll('.message.pending'));
-          for(const n of nodes){
-            if(n.dataset.pending === `${currentUsername}|${txt}|${row.created_at}`) n.remove();
-          }
-          displayMessageRow(d2);
-          return;
-        } catch(fbEx){
-          console.error('fallback exception', fbEx);
-          addPending({ username: currentUsername, message: txt, created_at: row.created_at });
-          showError('Send failed; queued locally.');
-          return;
-        }
-      } else {
-        addPending({ username: currentUsername, message: txt, created_at: row.created_at });
-        showError('Send failed; queued locally.');
-        return;
-      }
-    }
-
-    if(data){
-      const nodes = Array.from(chatEl.querySelectorAll('.message.pending'));
-      for(const n of nodes){
-        if(n.dataset.pending === `${currentUsername}|${txt}|${row.created_at}`) n.remove();
-      }
-      if(data.id && !data.device_id) addOwnedId(String(data.id));
-      displayMessageRow(data);
-    }
-  } catch(ex){
-    console.error('send exception', ex);
-    addPending({ username: currentUsername, message: txt, created_at: row.created_at });
-    showError('Send exception; queued locally.');
-  }
-}
-
-/* Delete message (guard by device_id or local-owned id) */
-async function deleteMessage(row, domNode){
-  if(!row || !row.id){ showError('Cannot delete: missing id'); return; }
-
-  if(row.device_id){
-    try{
-      const { error } = await supabase.from('messages').delete().match({ id: row.id }).eq('device_id', deviceId);
-      if(error){ console.error('delete error (device_id)', error); showError('Delete failed (server)'); return; }
-      domNode.remove();
-      removeOwnedId(String(row.id));
-      return;
-    } catch(e){ console.error('delete exception (device_id)', e); showError('Delete failed'); return; }
-  }
-
-  const owned = getOwnedIds().includes(String(row.id));
-  if(!owned){ showError('Cannot delete: not owned by this device.'); return; }
-  try{
-    const { error } = await supabase.from('messages').delete().eq('id', row.id);
-    if(error){ console.error('delete fallback error', error); showError('Delete failed'); return; }
-    domNode.remove();
-    removeOwnedId(String(row.id));
-  } catch(e){ console.error('delete fallback exception', e); showError('Delete failed'); }
-}
-
-/* Delete all my messages */
-async function deleteAllMyMessages(){
-  if(!confirm('Delete all messages posted by this device?')) return;
-  try{
-    const { error } = await supabase.from('messages').delete().eq('device_id', deviceId);
-    if(!error){
-      const ownedIds = getOwnedIds();
-      Array.from(chatEl.children).forEach(node => {
-        const id = node.dataset.id;
-        const uname = node.querySelector('.username')?.textContent;
-        if((id && ownedIds.includes(String(id))) || uname === currentUsername) node.remove();
-      });
-      localStorage.removeItem(OWNED_IDS_KEY);
-      return;
-    }
-    // fallback: delete by owned ids
-    const ownedIds = getOwnedIds();
-    for(const id of ownedIds){
-      const { error: e2 } = await supabase.from('messages').delete().eq('id', id);
-      if(!e2) removeOwnedId(id);
-    }
-    Array.from(chatEl.children).forEach(node => {
-      const id = node.dataset.id;
-      const uname = node.querySelector('.username')?.textContent;
-      if((id && ownedIds.includes(String(id))) || uname === currentUsername) node.remove();
-    });
-  } catch(e){ console.error('deleteAll exception', e); showError('Delete all failed'); }
-}
-
-/* Username registration (insert-first then check owner) */
-async function tryRegisterUsername(name){
-  if(!deviceIp) deviceIp = await fetchIP();
-  console.log('[username] register attempt', { name, deviceId, deviceIp });
-
-  try{
-    const ins = await supabase.from('user_ips').insert([{ username: name, device_id: deviceId, ip_address: deviceIp || 'unknown' }]).select().maybeSingle();
-    if(ins.error){
-      const msg = String(ins.error.message || ins.error.details || '').toLowerCase();
-      const isDup = msg.includes('duplicate') || msg.includes('unique') || (ins.error.code === '23505') || (ins.error.status === 409);
-      if(!isDup){
-        console.error('[username] insert error (not dup)', ins.error);
-        showError('Registration failed (DB). See console.');
-        return false;
-      }
-    } else {
-      console.log('[username] inserted', ins.data);
-      return true;
-    }
-  } catch(insertEx){
-    console.warn('[username] insert ex (will check)', insertEx);
-  }
-
-  try{
-    const sel = await supabase.from('user_ips').select().eq('username', name).limit(1).maybeSingle();
-    if(sel.error){ console.error('[username] select error', sel.error); showError('Username check failed'); return false; }
-    const existing = sel.data;
-    if(!existing){ showError('Registration conflict — try again'); return false; }
-    if(existing.device_id === deviceId || (deviceIp && existing.ip_address === deviceIp)){
-      try{ const { error: updErr } = await supabase.from('user_ips').update({ device_id: deviceId, ip_address: deviceIp || existing.ip_address }).eq('id', existing.id); if(updErr) console.warn('[username] update warning', updErr); } catch(updEx){ console.warn('[username] update ex', updEx); }
-      return true;
-    }
-    return false;
-  } catch(selEx){
-    console.error('[username] select ex', selEx);
-    showError('Username check exception');
-    return false;
-  }
-}
-
-/* Save username */
-saveNameBtn.addEventListener('click', async () => {
-  const name = usernameEl.value.trim();
-  if(!name){ flashNameMsg('Enter a username'); return; }
-  if(oldUsernames.includes(name)){
-    currentUsername = name;
-    localStorage.setItem('chatUsername', currentUsername);
-    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-    flashNameMsg('Switched to saved username');
-    return;
-  }
-  const ok = await tryRegisterUsername(name);
-  if(!ok){
-    flashNameMsg('Username taken or registration failed');
-    usernameEl.value = currentUsername || '';
-    return;
-  }
-  currentUsername = name;
-  localStorage.setItem('chatUsername', currentUsername);
-  if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
-  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-  flashNameMsg('Username saved');
+// Username save/change
+saveNameBtn.addEventListener('click',async()=>{
+  const name=usernameEl.value.trim();
+  if(!name){ flashNameMsg('Enter username'); return; }
+  if(oldUsernames.includes(name)){ currentUsername=name; localStorage.setItem('chatUsername',currentUsername); currentUsernameLabel.textContent='Username: '+currentUsername; flashNameMsg('Switched to saved username'); return; }
+  const ok=await tryRegisterUsername(name);
+  if(ok){ currentUsername=name; localStorage.setItem('chatUsername',currentUsername); oldUsernames.push(name); localStorage.setItem('oldUsernames',JSON.stringify(oldUsernames)); currentUsernameLabel.textContent='Username: '+currentUsername; flashNameMsg('Username saved'); }
 });
 
-/* Change username */
-changeNameBtn.addEventListener('click', () => {
-  currentUsername = '';
-  localStorage.removeItem('chatUsername');
-  usernameEl.value = '';
-  currentUsernameLabel.textContent = 'Username: Guest';
-  flashNameMsg('You can now choose a new username');
-});
+changeNameBtn.addEventListener('click',()=>{ usernameEl.value=currentUsername||''; flashNameMsg('You can change username'); });
 
-/* Auto-login + fetch IP */
-(async function tryAutoLogin(){
-  deviceIp = await fetchIP();
-  deviceNote.textContent = deviceIp ? `Device ID saved · IP: ${deviceIp}` : `Device ID saved · IP unknown`;
+autoScrollBtn.addEventListener('click',()=>{ autoScroll=!autoScroll; localStorage.setItem('autoScroll',autoScroll?'true':'false'); updateAutoScrollBtn(); });
 
-  if(currentUsername){
-    try{
-      const { data: existing } = await supabase.from('user_ips').select().eq('username', currentUsername).limit(1).maybeSingle();
-      if(existing){
-        if(existing.device_id === deviceId || existing.ip_address === deviceIp){
-          currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-          supabase.from('user_ips').update({ device_id: deviceId, ip_address: deviceIp || existing.ip_address }).eq('id', existing.id).catch(()=>{});
-        } else {
-          flashNameMsg('Saved username claimed elsewhere — choose another');
-          currentUsername = '';
-          localStorage.removeItem('chatUsername');
-          currentUsernameLabel.textContent = 'Username: Guest';
-        }
-      } else {
-        await tryRegisterUsername(currentUsername);
-      }
-    }catch(e){ console.warn('auto-login error', e); }
-  }
-})();
+delAllBtn.addEventListener('click',deleteAllMyMessages);
 
-/* Notifications & SW */
-(async function initNotifications(){
-  try{ await registerBlobSW(); await ensureNotificationPermission(); }catch(e){ /* ignore */ }
-})();
+sendBtn.addEventListener('click',sendMessage);
+messageInput.addEventListener('keydown',e=>{ if(e.key==='Enter') sendMessage(); });
 
-/* Realtime subscribe with robust status handling */
-let channel = null;
-async function initRealtime(){
+async function subscribeRealtime(){
   try{
-    try{ supabase.removeAllChannels(); } catch(e){ /* ignore */ }
-    channel = supabase.channel('realtime-' + Date.now(), { config: { broadcast: { ack: true } } });
-
-    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-      displayMessageRow(payload.new);
-      if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
-        if(navigator.serviceWorker && navigator.serviceWorker.controller){
-          navigator.serviceWorker.controller.postMessage({ type:'notify', title: payload.new.username, body: payload.new.message || '' });
-        } else {
-          new Notification(payload.new.username, { body: payload.new.message || '' });
+    supabase.removeAllChannels();
+    await supabase.channel('realtime-messages')
+      .on('postgres_changes',{ event:'INSERT', schema:'public', table:'messages' },payload=>{
+        displayMessageRow(payload.new);
+        if(Notification.permission==='granted' && document.hidden && payload.new.username!==currentUsername){
+          new Notification(`New: ${payload.new.username}`,{body:payload.new.message??payload.new.text??''});
         }
-      }
-    });
-
-    channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-      const el = chatEl.querySelector(`[data-id='${payload.old.id}']`);
-      if(el) el.remove();
-      removeOwnedId(String(payload.old.id));
-    });
-
-    // subscribe with status callback
-    channel.subscribe((status, err) => {
-      console.log('Realtime status:', status, err || '');
-      const s = (typeof status === 'string') ? status : (status?.status || status?.type || '');
-      if(s === 'SUBSCRIBED' || s === 'ONLINE'){
-        realtimeRetryCount = 0;
-        setRealtimeConnected(true);
-      } else {
-        setRealtimeConnected(false);
-        if(err) console.warn('realtime subscribe err:', err);
-        if(realtimeRetryCount < maxRealtimeRetries){
-          realtimeRetryCount++;
-          const delay = Math.min(1000 * Math.pow(2, realtimeRetryCount), 30000);
-          console.warn('Realtime reconnect attempt in', delay);
-          setTimeout(initRealtime, delay);
-        }
-      }
-    });
-
-  } catch(e){
-    console.error('initRealtime exception', e);
-    setRealtimeConnected(false);
-  }
+      })
+      .subscribe();
+    setRealtimeConnected(true);
+  }catch(e){ console.error('subscribe error',e); setRealtimeConnected(false); }
 }
 
-/* Boot */
-initRealtime();
-updateAutoScrollBtn();
-setInterval(loadMessages, 1000); // 1s polling fallback
+function startPolling(){ setInterval(loadMessages,1000); }
 
-sendBtn.addEventListener('click', sendMessage);
-messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
-delAllBtn.addEventListener('click', deleteAllMyMessages);
-autoScrollBtn.addEventListener('click', () => { autoScroll = !autoScroll; localStorage.setItem('autoScroll', autoScroll); updateAutoScrollBtn(); });
-
-/* Initial load/resend */
-(async function start(){
-  await loadMessages();
-  await resendPending();
+(async function init(){
+  await fetchIP();
+  if(currentUsername){ usernameEl.value=currentUsername; currentUsernameLabel.textContent='Username: '+currentUsername; }
+  updateAutoScrollBtn();
   updateNetworkUI();
+  await loadMessages();
+  await subscribeRealtime();
+  startPolling();
+  if('Notification' in window && Notification.permission!=='granted') Notification.requestPermission().catch(()=>{});
 })();
-
-/* small helpers used above */
-async function registerBlobSW(){ if(!('serviceWorker' in navigator)) return null; try{ const blob = new Blob([swCode], { type:'application/javascript' }); const url = URL.createObjectURL(blob); const reg = await navigator.serviceWorker.register(url); return reg; }catch(e){ console.warn('sw register failed', e); return null; } }
-async function ensureNotificationPermission(){ if('Notification' in window && Notification.permission !== 'granted'){ try{ await Notification.requestPermission(); } catch(e){ console.warn(e); } } }
-
 </script>
 </body>
 </html>
