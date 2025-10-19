@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — Auto Refresh</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat Realtime + Auto Refresh</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
   body {
@@ -14,192 +14,174 @@
     justify-content: center;
     padding: 24px;
   }
-  .wrap {
-    width: 100%;
-    max-width: 700px;
-  }
-  h1 { text-align: center; color: #60a5fa; margin-bottom: 16px; }
+  .wrap { width: 100%; max-width: 700px; }
+  h1 { text-align: center; color: #60a5fa; margin-bottom: 12px; }
   #chat {
     background: #071127;
+    border: 1px solid #1f2937;
     border-radius: 8px;
     padding: 12px;
     height: 400px;
     overflow-y: auto;
-    border: 1px solid #1f2937;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   .message {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
   }
+  .message-content { flex: 1; }
   .username { color: #60a5fa; font-weight: 600; }
-  .text { flex: 1; }
-  .ts { color: #94a3b8; font-size: 0.75rem; }
+  .text { color: #f8fafc; }
+  .ts { color: #94a3b8; font-size: 0.75rem; margin-left: 6px; }
   .del-btn {
-    width: 12px; height: 12px;
-    background: #fb7185;
+    width: 14px;
+    height: 14px;
+    background: #ef4444;
     border: none;
     border-radius: 50%;
     cursor: pointer;
     flex-shrink: 0;
+    margin-left: 6px;
+  }
+  .top { display: flex; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 10px; }
+  #username { background: #0f1724; color: white; border: 1px solid #1f2937; padding: 6px; border-radius: 6px; }
+  #saveName {
+    background: #2563eb; color: white; border: none;
+    padding: 6px 10px; border-radius: 6px; cursor: pointer;
   }
   #controls {
     display: flex;
     gap: 10px;
-    margin-top: 12px;
   }
   #messageInput {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    background: #0f1724;
-    color: white;
-    border: 1px solid #1f2937;
+    flex: 1; padding: 10px; border-radius: 8px;
+    background: #0f1724; color: white; border: 1px solid #1f2937;
   }
   #sendBtn {
-    padding: 10px 14px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .top {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  #username {
-    background: #0f1724;
-    color: white;
-    border: 1px solid #1f2937;
-    padding: 6px;
-    border-radius: 6px;
-  }
-  #saveName {
-    background: #2563eb;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
+    padding: 10px 14px; background: #2563eb; color: white;
+    border: none; border-radius: 8px; cursor: pointer;
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Chat (Auto-Refresh)</h1>
+  <h1>Realtime Chat</h1>
   <div class="top">
     <div>
       <span id="currentUsername">Username: Guest</span>
-      <input id="username" placeholder="Enter username" />
+      <input id="username" placeholder="Enter username">
       <button id="saveName">Save</button>
     </div>
   </div>
   <div id="chat"></div>
   <div id="controls">
-    <input id="messageInput" placeholder="Type a message" />
+    <input id="messageInput" placeholder="Type message...">
     <button id="sendBtn">Send</button>
   </div>
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = "https://xvnbxdcqmfsnnvbugasi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0";
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
+const chat = document.getElementById("chat");
+const usernameInput = document.getElementById("username");
+const saveNameBtn = document.getElementById("saveName");
+const currentUsernameLabel = document.getElementById("currentUsername");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
 
-let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-let lastMessages = [];
-
-usernameEl.value = currentUsername;
-currentUsernameLabel.textContent = `Username: ${currentUsername}`;
+let username = localStorage.getItem("chatUsername") || "Guest";
+usernameInput.value = username;
+currentUsernameLabel.textContent = "Username: " + username;
 
 saveNameBtn.onclick = () => {
-  const name = usernameEl.value.trim();
-  if (!name) return;
-  currentUsername = name;
-  localStorage.setItem('chatUsername', name);
-  if (!oldUsernames.includes(name)) {
-    oldUsernames.push(name);
-    localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames));
-  }
-  currentUsernameLabel.textContent = `Username: ${name}`;
+  const newName = usernameInput.value.trim();
+  if (!newName) return alert("Enter a username!");
+  if (newName === username) return;
+  username = newName;
+  localStorage.setItem("chatUsername", newName);
+  currentUsernameLabel.textContent = "Username: " + newName;
 };
 
 function fmtTime(ts) {
-  return new Date(ts).toLocaleString();
+  const d = new Date(ts);
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString();
 }
 
-function renderMessages(data) {
-  // Skip re-render if nothing changed
-  const ids = data.map(m => m.id).join(',');
-  const oldIds = lastMessages.map(m => m.id).join(',');
-  if (ids === oldIds) return;
-
-  lastMessages = data;
-  const scrollAtBottom = chatEl.scrollTop + chatEl.clientHeight >= chatEl.scrollHeight - 20;
-  chatEl.innerHTML = '';
-
-  data.forEach(row => {
-    const div = document.createElement('div');
-    div.className = 'message';
-    div.dataset.id = row.id;
-    div.innerHTML = `<span class="username">${row.username}</span>
-                     <span class="text">${row.message}</span>
-                     <span class="ts">[${fmtTime(row.created_at)}]</span>`;
-    const delBtn = document.createElement('button');
-    delBtn.className = 'del-btn';
-    if (row.username === currentUsername) {
-      delBtn.onclick = async () => {
-        await supabase.from('messages').delete().eq('id', row.id);
+function render(messages) {
+  const atBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 20;
+  chat.innerHTML = "";
+  messages.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "message";
+    div.innerHTML = `
+      <div class="message-content">
+        <span class="username">${m.username}</span>:
+        <span class="text">${m.message}</span>
+        <span class="ts">${fmtTime(m.created_at)}</span>
+      </div>
+    `;
+    if (m.username === username) {
+      const del = document.createElement("button");
+      del.className = "del-btn";
+      del.onclick = async () => {
+        await supabase.from("messages").delete().eq("id", m.id);
         loadMessages();
       };
-    } else delBtn.style.display = 'none';
-    div.appendChild(delBtn);
-    chatEl.appendChild(div);
+      div.appendChild(del);
+    }
+    chat.appendChild(div);
   });
-
-  if (scrollAtBottom) chatEl.scrollTop = chatEl.scrollHeight;
+  if (atBottom) chat.scrollTop = chat.scrollHeight;
 }
 
 async function loadMessages() {
   const { data, error } = await supabase
-    .from('messages')
-    .select()
-    .order('created_at', { ascending: true });
-  if (error) return console.error(error);
-  renderMessages(data);
+    .from("messages")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) console.error("Load error:", error);
+  else render(data);
 }
 
 async function sendMessage() {
-  const txt = messageInput.value.trim();
-  if (!txt || !currentUsername) return;
-  await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
+  const text = messageInput.value.trim();
+  if (!text) return;
+  await supabase.from("messages").insert([{ username, message: text }]);
+  messageInput.value = "";
   loadMessages();
 }
 
 sendBtn.onclick = sendMessage;
-messageInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
+messageInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMessage();
 });
 
-// Auto-refresh every 1 second
+// Auto-refresh fallback
 setInterval(loadMessages, 1000);
 loadMessages();
+
+// Realtime subscription
+try {
+  const channel = supabase.channel("messages-room");
+  channel
+    .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, payload => {
+      loadMessages();
+    })
+    .subscribe();
+} catch (err) {
+  console.error("Realtime failed:", err);
+}
 </script>
 </body>
 </html>
