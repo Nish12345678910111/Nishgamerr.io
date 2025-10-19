@@ -3,58 +3,61 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat (fixed) — Supabase Realtime</title>
+<title>Realtime Chat — Full Features</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
-  body { background:#0b1220; color:#e6eef8; font-family: Inter, system-ui, sans-serif; display:flex; justify-content:center; padding:18px; }
-  .wrap { width:100%; max-width:720px; }
-  h1 { text-align:center; color:#60a5fa; margin-bottom:10px; }
-  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
-  #currentUsername { color:#94a3b8; font-size:0.95rem; }
-  #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
-  #chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; }
-  .message { margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-  .username { color:#60a5fa; font-weight:700; margin-right:8px; }
-  .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; }
-  .delBtn { width:18px; height:18px; font-size:0.7rem; border:none; border-radius:2px; background:#fb7185; color:white; cursor:pointer; flex-shrink:0; }
-  #controls { display:flex; gap:8px; margin-top:10px; }
-  #messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937; }
-  #sendBtn { padding:10px 14px; background:#2563eb; border:none; border-radius:8px; color:white; cursor:pointer; }
-  #nameMsg { color:#fb7185; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
-  .pending { opacity:0.6; font-style:italic; }
-  #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700; }
-  .online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
-  #errorBox { margin-top:8px; color:#fecaca; min-height:1.2em; }
+body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px; }
+.wrap { width:100%; max-width:720px; }
+h1 { text-align:center; color:#60a5fa; margin-bottom:10px; }
+.top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap; }
+#currentUsername { color:#94a3b8; font-size:0.95rem; }
+#username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
+#chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; }
+.message { margin-bottom:10px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.username { color:#60a5fa; font-weight:700; margin-right:8px; }
+.ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; }
+.delBtn { width:18px; height:18px; font-size:0.7rem; border:none; border-radius:2px; background:#fb7185; color:white; cursor:pointer; flex-shrink:0; }
+#controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+#messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937; }
+#sendBtn, #delAllBtn, #autoScrollBtn { padding:10px 14px; background:#2563eb; border:none; border-radius:8px; color:white; cursor:pointer; }
+#nameMsg { color:#fb7185; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
+.pending { opacity:0.6; font-style:italic; }
+#status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700; }
+.online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
+#errorBox { margin-top:8px; color:#fecaca; min-height:1.2em; }
+.btnRow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-end; }
 </style>
 </head>
 <body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat App (fixed)</h1>
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color:#94a3b8">Dark • Realtime</div>
+<div id="status" class="offline">Offline</div>
+<div class="wrap">
+  <h1>Modern Chat App (Realtime + Features)</h1>
+  <div class="top">
+    <div>
+      <span id="currentUsername">Username: Guest</span>
+      <input id="username" placeholder="Enter username" />
+      <button id="saveName">Save</button>
+      <div id="nameMsg"></div>
     </div>
-    <div id="chat" role="log" aria-live="polite"></div>
-    <div id="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
+    <div class="btnRow">
+      <button id="autoScrollBtn" title="Toggle auto scroll">Auto Scroll: ON</button>
+      <button id="delAllBtn" title="Delete all my messages">Delete All</button>
     </div>
-    <div id="errorBox"></div>
   </div>
+  <div id="chat" role="log" aria-live="polite"></div>
+  <div id="controls">
+    <input id="messageInput" placeholder="Type a message" />
+    <button id="sendBtn">Send</button>
+  </div>
+  <div id="errorBox"></div>
+</div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout:15000 } });
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
@@ -63,90 +66,158 @@ const nameMsgEl = document.getElementById('nameMsg');
 const currentUsernameLabel = document.getElementById('currentUsername');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
+const delAllBtn = document.getElementById('delAllBtn');
+const autoScrollBtn = document.getElementById('autoScrollBtn');
 const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
 
 let currentUsername = localStorage.getItem('chatUsername') || '';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
+let autoScroll = localStorage.getItem('autoScroll') !== 'false'; // default ON
 
-function updateNetworkUI(){
+function updateAutoScrollBtn() {
+  autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+  autoScrollBtn.style.background = autoScroll ? '#2563eb' : '#475569';
+}
+updateAutoScrollBtn();
+
+autoScrollBtn.addEventListener('click', () => {
+  autoScroll = !autoScroll;
+  localStorage.setItem('autoScroll', autoScroll);
+  updateAutoScrollBtn();
+});
+
+function updateNetworkUI() {
   const online = navigator.onLine;
-  statusEl.textContent = online?'Online':'Offline';
-  statusEl.className = online?'online':'offline';
+  statusEl.textContent = online ? 'Online' : 'Offline';
+  statusEl.className = online ? 'online' : 'offline';
 }
 window.addEventListener('online', updateNetworkUI);
 window.addEventListener('offline', updateNetworkUI);
 updateNetworkUI();
 
-function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function fmtTime(ts){ return new Date(ts).toLocaleString(); }
-function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2200); }
-function showError(txt){ errorBox.textContent=txt; setTimeout(()=>{ if(errorBox.textContent===txt) errorBox.textContent=''; },4000); }
+function escapeHtml(s) {
+  return String(s || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+function fmtTime(ts) {
+  return new Date(ts).toLocaleString();
+}
+function flashNameMsg(txt) {
+  nameMsgEl.textContent = txt;
+  setTimeout(() => (nameMsgEl.textContent = ''), 2200);
+}
+function showError(txt) {
+  errorBox.textContent = txt;
+  setTimeout(() => {
+    if (errorBox.textContent === txt) errorBox.textContent = '';
+  }, 4000);
+}
 
-function displayMessageRow(row){
+function displayMessageRow(row) {
   const div = document.createElement('div');
-  div.className='message';
-  div.dataset.id=row.id;
-  div.innerHTML=`<span class="username">${escapeHtml(row.username)}</span>
-                 <span class="text">${escapeHtml(row.message)}</span>
-                 <span class="ts">[${fmtTime(row.created_at)}]</span>`;
-  if(row.username===currentUsername){
+  div.className = 'message';
+  div.dataset.id = row.id;
+  div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>
+                   <span class="text">${escapeHtml(row.message)}</span>
+                   <span class="ts">[${fmtTime(row.created_at)}]</span>`;
+  if (row.username === currentUsername) {
     const delBtn = document.createElement('button');
-    delBtn.className='delBtn';
-    delBtn.textContent='×';
-    delBtn.onclick=async()=>{
-      try{
-        await supabase.from('messages').delete().eq('id',row.id);
+    delBtn.className = 'delBtn';
+    delBtn.textContent = '×';
+    delBtn.onclick = async () => {
+      try {
+        await supabase.from('messages').delete().eq('id', row.id);
         div.remove();
-      }catch(e){ showError('Delete failed'); }
+      } catch (e) {
+        showError('Delete failed');
+      }
     };
     div.appendChild(delBtn);
   }
   chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-async function loadMessages(){
-  try{
-    const {data,error} = await supabase.from('messages').select().order('created_at',{ascending:true});
-    if(error){ showError('Load failed'); return; }
-    chatEl.innerHTML='';
+async function loadMessages() {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select()
+      .order('created_at', { ascending: true });
+    if (error) {
+      showError('Load failed');
+      return;
+    }
+    chatEl.innerHTML = '';
     data.forEach(displayMessageRow);
-  }catch(e){ showError('Load error'); }
+  } catch (e) {
+    showError('Load error');
+  }
 }
 
-async function sendMessage(){
+async function sendMessage() {
   const txt = messageInput.value.trim();
-  if(!txt) return;
-  if(!currentUsername){ flashNameMsg('Set username first'); return; }
-  const row={username:currentUsername,message:txt,created_at:new Date().toISOString()};
+  if (!txt) return;
+  if (!currentUsername) {
+    flashNameMsg('Set username first');
+    return;
+  }
+  const row = {
+    username: currentUsername,
+    message: txt,
+    created_at: new Date().toISOString(),
+  };
   displayMessageRow(row);
-  messageInput.value='';
-  try{ await supabase.from('messages').insert([{username:currentUsername,message:txt}]); }
-  catch(e){ showError('Send failed'); console.error(e); }
+  messageInput.value = '';
+  try {
+    await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
+  } catch (e) {
+    showError('Send failed');
+  }
 }
 
-saveNameBtn.addEventListener('click',async()=>{
-  const name=usernameEl.value.trim();
-  if(!name){ flashNameMsg('Enter username'); return; }
-  currentUsername=name;
-  localStorage.setItem('chatUsername',name);
-  if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames',JSON.stringify(oldUsernames)); }
-  currentUsernameLabel.textContent='Username: '+name;
+saveNameBtn.addEventListener('click', () => {
+  const name = usernameEl.value.trim();
+  if (!name) {
+    flashNameMsg('Enter username');
+    return;
+  }
+  currentUsername = name;
+  localStorage.setItem('chatUsername', name);
+  currentUsernameLabel.textContent = 'Username: ' + name;
   flashNameMsg('Username saved');
 });
 
-if(currentUsername){ usernameEl.value=currentUsername; currentUsernameLabel.textContent='Username: '+currentUsername; }
+if (currentUsername) {
+  usernameEl.value = currentUsername;
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+}
 
-sendBtn.addEventListener('click',sendMessage);
-messageInput.addEventListener('keydown',e=>{ if(e.key==='Enter') sendMessage(); });
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+delAllBtn.addEventListener('click', async () => {
+  if (!currentUsername) return;
+  try {
+    await supabase.from('messages').delete().eq('username', currentUsername);
+    Array.from(chatEl.children).forEach((div) => {
+      if (div.querySelector('.username')?.textContent === currentUsername) div.remove();
+    });
+  } catch (e) {
+    showError('Delete all failed');
+  }
+});
 
 loadMessages();
-setInterval(loadMessages,1000);
+setInterval(loadMessages, 1000);
 
-// Realtime subscribe
-supabase.channel('realtime-messages')
-  .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
+supabase
+  .channel('realtime-messages')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
     displayMessageRow(payload.new);
   })
   .subscribe();
