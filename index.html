@@ -3,355 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — Supabase Realtime (Fixed)</title>
-
-<!-- Supabase client -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
-
-<style>
-  /* Old compact GUI look (keeps your original look) */
-  :root{
-    --bg:#0b1220; --panel:#071127; --input:#0f1724; --border:#1f2937;
-    --text:#e6eef8; --muted:#94a3b8; --accent:#60a5fa; --btn:#2563eb;
-    --err:#fb7185; --ok:#16a34a; --radius:8px; --shadow:0 2px 8px rgba(0,0,0,.3);
-  }
-  body{background:var(--bg); color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;
-        display:flex; justify-content:center; padding:24px; margin:0;}
-  .wrap{width:100%; max-width:768px;}
-  h1{color:var(--accent); text-align:center; margin-bottom:12px;}
-  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
-  #currentUsername{color:var(--muted)}
-  #username{background:var(--input); color:var(--text); border:1px solid var(--border); padding:8px 10px; border-radius:6px; width:220px}
-  #saveName{background:var(--btn); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer}
-  #chat{background:var(--panel); border-radius:8px; padding:14px; height:440px; overflow:auto; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:12px;}
-  .message{margin-bottom:10px; display:flex; gap:8px; align-items:baseline;}
-  .username{color:var(--accent); font-weight:700; flex-shrink:0}
-  .ts{color:var(--muted); font-size:.8rem; flex-shrink:0}
-  #controls{display:flex;gap:10px}
-  #messageInput{flex:1; padding:12px; border-radius:8px; background:var(--input); color:var(--text); border:1px solid var(--border)}
-  #sendBtn{padding:12px 16px; background:var(--btn); color:white; border:none; border-radius:8px; cursor:pointer}
-  .pending{opacity:.7; font-style:italic}
-  #nameMsg{color:var(--err); font-size:.9rem; margin-top:6px; min-height:1.2em}
-  #status{position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:8px; font-weight:700; box-shadow:var(--shadow)}
-  .online{background:var(--ok); color:#05300d} .offline{background:#dc2626; color:#2b0202}
-  #errorBox{margin-top:10px; color:var(--err); min-height:1.2em}
-  @media(max-width:600px){#username{width:100%}}
-</style>
-</head>
-<body>
-<div id="status" class="offline">Offline</div>
-
-<div class="wrap">
-  <h1>Modern Chat App</h1>
-
-  <div class="top">
-    <div>
-      <span id="currentUsername">Username: Guest</span>
-      <input id="username" placeholder="Enter username" />
-      <button id="saveName">Save</button>
-      <div id="nameMsg"></div>
-    </div>
-    <div style="color:var(--muted)">Dark • Realtime</div>
-  </div>
-
-  <div id="chat" role="log" aria-live="polite"></div>
-
-  <div id="controls">
-    <input id="messageInput" placeholder="Type a message" />
-    <button id="sendBtn">Send</button>
-  </div>
-
-  <div id="errorBox"></div>
-</div>
-
-<script type="module">
-/* ============================
-   CONFIG — fill only if needed
-   ============================
-   Supabase project (you already provided these)
-*/
-const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-
-/* Optional: Firebase config for closed-browser push (FCM)
-   If you want push while browser is fully closed, fill firebaseConfig.apiKey and other fields,
-   then also create a file named `firebase-messaging-sw.js` at your site root with content shown below.
-   If you don't want closed-browser push, leave firebaseConfig.apiKey = '' (default).
-*/
-const firebaseConfig = {
-  apiKey: "",            // <-- fill from Firebase project settings to enable FCM
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "24163130777",
-  appId: ""
-};
-
-// Your Firebase Web Push VAPID key (copy from Firebase Console -> Cloud Messaging -> Web Push certificates)
-const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
-
-/* ============================
-   END CONFIG
-   ============================ */
-
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-/* Supabase client */
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
-
-/* DOM */
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const nameMsgEl = document.getElementById('nameMsg');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
-
-/* State */
-let currentUsername = localStorage.getItem('chatUsername') || '';
-let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-const PENDING_KEY = 'chat_pending_v2';
-let pollTimer = null;
-
-/* Network UI */
-function updateNetworkUI(){
-  const online = navigator.onLine;
-  statusEl.textContent = online ? 'Online' : 'Offline';
-  statusEl.className = online ? 'online' : 'offline';
-  if(online) resendPending();
-}
-window.addEventListener('online', updateNetworkUI);
-window.addEventListener('offline', updateNetworkUI);
-updateNetworkUI();
-
-/* Utilities */
-function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function formatTimestamp(ts){
-  if(!ts) return '??:??';
-  const d = new Date(ts);
-  if(isNaN(d.getTime())) return '??:??';
-  // show date + time compact (local)
-  return d.toLocaleString(undefined, { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
-}
-function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
-function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=>nameMsgEl.textContent = '', 2400); }
-
-/* Display helper (supports message or text field names) */
-function displayMessageRow(row, { pending=false } = {}){
-  const username = row.username ?? row.user ?? 'Unknown';
-  const message = row.message ?? row.text ?? '';
-  const created_at = row.created_at ?? row.createdAt ?? new Date().toISOString();
-
-  const div = document.createElement('div');
-  div.className = 'message' + (pending ? ' pending' : '');
-  div.innerHTML = `<span class="username">${escapeHtml(username)}</span>
-                   <span class="text">${escapeHtml(message)}</span>
-                   <span class="ts">[${formatTimestamp(created_at)}]</span>`;
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
-
-/* Pending queue (localStorage) */
-function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
-function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
-function removePending(obj){ const current = getPending(); const remaining = current.filter(x=>JSON.stringify(x)!==JSON.stringify(obj)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
-async function resendPending(){
-  const arr = getPending();
-  if(!arr.length) return;
-  for(const p of [...arr]){
-    try{
-      const { error } = await supabase.from('messages').insert([p]);
-      if(!error) removePending(p);
-    }catch(e){ console.error('resend failed', e); }
-  }
-}
-
-/* Load messages (canonical source) */
-async function loadMessages(){
-  try{
-    const { data, error } = await supabase.from('messages').select('id,username,message,created_at').order('created_at', { ascending: true });
-    if(error){
-      console.error('load error', error);
-      showError('Failed to load messages (check table/RLS).');
-      return;
-    }
-    chatEl.innerHTML = '';
-    data.forEach(displayMessageRow);
-    // show pending after DB rows
-    getPending().forEach(p => displayMessageRow(p, { pending:true }));
-  } catch(e){
-    console.error('unexpected load error', e);
-    showError('Unexpected load error — check console.');
-  }
-}
-
-/* Send message (optimistic + queue) */
-async function sendMessage(){
-  const txt = messageInput.value.trim();
-  if(!txt) return;
-  if(!currentUsername){ flashNameMsg('Set username first'); return; }
-
-  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-
-  // optimistic render (pending if offline)
-  displayMessageRow(row, { pending: !navigator.onLine });
-  messageInput.value = '';
-
-  if(!navigator.onLine){
-    addPending(row);
-    return;
-  }
-
-  try{
-    const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
-    if(error){
-      console.error('insert error', error);
-      addPending(row);
-      showError('Send failed; queued locally.');
-    }
-  }catch(e){
-    console.error('send exception', e);
-    addPending(row);
-    showError('Send exception; queued locally.');
-  }
-}
-
-/* Username handling */
-async function isUsernameTakenInDB(name){
-  try{
-    const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
-    if(error){ console.error('username check error', error); return true; }
-    return (data && data.length > 0);
-  }catch(e){ console.error(e); return true; }
-}
-
-saveNameBtn.addEventListener('click', async ()=>{
-  const name = usernameEl.value.trim();
-  if(!name){ flashNameMsg('Enter a username'); return; }
-
-  // allow switching back to a username you've used before locally
-  if(oldUsernames.includes(name)){
-    currentUsername = name;
-    localStorage.setItem('chatUsername', currentUsername);
-    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-    flashNameMsg('Switched to saved username');
-    return;
-  }
-
-  // otherwise check DB to avoid stealing someone else's name
-  const taken = await isUsernameTakenInDB(name);
-  if(taken){
-    flashNameMsg('Username already taken');
-    usernameEl.value = currentUsername || '';
-    return;
-  }
-
-  // accept and save
-  currentUsername = name;
-  localStorage.setItem('chatUsername', currentUsername);
-  if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
-  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-  flashNameMsg('Username saved');
-});
-
-/* Initialize username if present */
-if(currentUsername && currentUsername !== 'Guest'){
-  usernameEl.value = currentUsername;
-  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-} else {
-  currentUsername = ''; // require explicit save
-  currentUsernameLabel.textContent = 'Username: Guest';
-}
-
-/* Realtime subscription: on any insert, reload canonical list */
-async function subscribeRealtime(){
-  try{
-    supabase.removeAllChannels();
-    await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        // notify user if tab hidden and permission granted
-        if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
-          // try to use service worker to show notification (blob SW registered below)
-          if(navigator.serviceWorker && navigator.serviceWorker.controller){
-            navigator.serviceWorker.controller.postMessage({type:'notify', title: `New from ${payload.new.username}`, body: payload.new.message ?? ''});
-          } else {
-            new Notification(`New from ${payload.new.username}`, { body: payload.new.message ?? '' });
-          }
-        }
-        // refresh canonical list
-        loadMessages();
-      })
-      .subscribe();
-  }catch(e){
-    console.error('subscribe error', e);
-    showError('Realtime subscribe failed (check console).');
-  }
-}
-
-/* Polling fallback for 0s feel (runs alongside realtime) */
-function startPolling(){
-  if(pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(loadMessages, 500); // 0.5s refresh -> feels instant
-}
-
-/* Small blob service worker for in-page background notifications while browser runs */
-const blobSwCode = `
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => self.clients.claim());
-self.addEventListener('message', e => {
-  const d = e.data;
-  if(!d || d.type !== 'notify') return;
-  const title = d.title || 'New message';
-  const opts = { body: d.body || '', tag: 'supabase-chat-notify', renotify: true };
-  self.registration.showNotification(title, opts);
-});
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(clients.matchAll({ type:'window' }).then(list => {
-    for(const w of list) if(w.visibilityState === 'visible') return w.focus();
-    return clients.openWindow('/');
-  }));
-});
-`;
-
-/* Register blob SW and (optionally) try to register firebase SW if present on server */
-async function registerSwAndMaybeFcm(){
-  if(!('serviceWorker' in navigator)) return null;
-  try{
-    // blob SW for showing notifications while browser runs/backgrounded
-    const blob = new Blob([blobSwCode], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-    await navigator.serviceWorker.register(blobUrl);
-    console.log('blob SW registered');
-
-    // If Firebase config provided (apiKey present), try to register firebase-messaging-sw.js from root
-    if(firebaseConfig.apiKey){
-      try{
-        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('firebase-messaging-sw.js registered at root:', reg.scope);
-        // now try to register with Firebase and get FCM token
-        await registerFcmToken(reg);
-      }catch(e){
-        console.warn('firebase SW registration failed - ensure firebase-messaging-sw.js exists at site root if you want closed-browser push.', e);
-      }
-    }
-  }catch(e){ console.warn('service worker registration failed', e); }
-}
-
-/* FCM: register and get token (requires firebaseConfig filled and firebase-messaging-sw.js present at root).
-   If you want closed-browser push, fill firebaseConfig above and create firebase-messaging-sw.js at root (instructions below).
-*/
-async function registerFcmToken(registration){
-  try{
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — Supabase Realtime (Fixed)</title>
+<title>Chat — Supabase Realtime (Mobile-friendly)</title>
 
 <!-- Supabase client -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
@@ -382,7 +34,13 @@ async function registerFcmToken(registration){
   #status{position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:8px; font-weight:700; box-shadow:var(--shadow);}
   .online{background:var(--ok); color:#052e0b;} .offline{background:#dc2626; color:#2b0202;}
   #errorBox{margin-top:8px; color:var(--err); min-height:1.2em;}
-  @media(max-width:600px){ #username{width:100%;} #chat{height:360px;} }
+  /* MOBILE tweak: make chat box shorter so input + send are visible without extra scroll */
+  @media (max-width: 600px) {
+    #chat { height: 280px; } /* reduced from 440 to 280 on mobile */
+    body { padding:16px; }
+    #username { width:100%; max-width:220px; margin-top:6px; }
+    .top { flex-direction: column; align-items:flex-start; gap:8px; }
+  }
 </style>
 </head>
 
@@ -404,7 +62,7 @@ async function registerFcmToken(registration){
 
     <div id="chat" role="log" aria-live="polite"></div>
 
-    <!-- controls are short and fixed at bottom of chat area -->
+    <!-- controls sit below chat (short input & send) -->
     <div id="controls">
       <input id="messageInput" placeholder="Type a message" autocomplete="off" />
       <button id="sendBtn">Send</button>
@@ -414,19 +72,17 @@ async function registerFcmToken(registration){
   </div>
 
 <script type="module">
-/* ---------------------
-   CONFIG - EDIT ONLY THESE
-   --------------------- */
+/* ----------------------------
+   CONFIG - only change values
+   ---------------------------- */
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-
-/* Optional (only if you want browser-closed push): fill firebaseConfig & create firebase-messaging-sw.js at site root */
+/* Optional FCM: fill if you will enable closed-browser push */
 const firebaseConfig = { apiKey: "", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"24163130777", appId:"" };
 const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
-
-/* ---------------------
+/* ----------------------------
    END CONFIG
-   --------------------- */
+   ---------------------------- */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
@@ -445,10 +101,10 @@ const errorBox = document.getElementById('errorBox');
 /* STATE */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-const PENDING_KEY = 'chat_pending_v3';
+const PENDING_KEY = 'chat_pending_v4';
 let pollTimer = null;
 
-/* NETWORK UI */
+/* Network UI */
 function updateNetworkUI(){
   const online = navigator.onLine;
   statusEl.textContent = online ? 'Online' : 'Offline';
@@ -459,19 +115,18 @@ window.addEventListener('online', updateNetworkUI);
 window.addEventListener('offline', updateNetworkUI);
 updateNetworkUI();
 
-/* UTIL */
+/* Utils */
 function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 function formatTimestamp(ts){
   if(!ts) return '??:??';
   const d = new Date(ts);
   if(isNaN(d.getTime())) return '??:??';
-  // Local (Asia/Kolkata for your preference) formatting — uses user's locale but shows date+time
   return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
 }
 function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },4000); }
 function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent = '', 2200); }
 
-/* DISPLAY */
+/* Display */
 function clearChat(){ chatEl.innerHTML = ''; }
 function displayMessageRow(row, { pending=false } = {}){
   const username = row.username ?? row.user ?? 'Unknown';
@@ -487,23 +142,23 @@ function displayMessageRow(row, { pending=false } = {}){
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* PENDING QUEUE */
+/* Pending queue */
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
-function addPending(obj){ const a = getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
-function removePending(obj){ const a = getPending(); const remaining = a.filter(x => JSON.stringify(x)!==JSON.stringify(obj)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
+function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
+function removePending(obj){ const a=getPending(); const remaining = a.filter(x=>JSON.stringify(x)!==JSON.stringify(obj)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
 
 async function resendPending(){
-  const queue = getPending();
-  if(!queue.length) return;
-  for(const p of [...queue]){
+  const arr = getPending();
+  if(!arr.length) return;
+  for(const p of [...arr]){
     try{
       const { error } = await supabase.from('messages').insert([p]);
       if(!error) removePending(p);
-    }catch(e){ console.error('resend pending error', e); }
+    }catch(e){ console.error('resend error', e); }
   }
 }
 
-/* LOAD messages from DB and show pending */
+/* Load messages */
 async function loadMessages(){
   try{
     const { data, error } = await supabase.from('messages').select('id,username,message,created_at').order('created_at', { ascending: true });
@@ -514,6 +169,7 @@ async function loadMessages(){
     }
     clearChat();
     data.forEach(displayMessageRow);
+    // show pending after DB rows
     getPending().forEach(p => displayMessageRow(p, { pending:true }));
   }catch(e){
     console.error('unexpected load error', e);
@@ -521,14 +177,15 @@ async function loadMessages(){
   }
 }
 
-/* SEND message (optimistic + offline queue) */
+/* Send message */
 async function sendMessage(){
   const txt = messageInput.value.trim();
   if(!txt) return;
   if(!currentUsername){ flashNameMsg('Set username first'); return; }
 
   const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-  // optimistic render (pending if offline)
+
+  // optimistic local render; pending if offline
   displayMessageRow(row, { pending: !navigator.onLine });
   messageInput.value = '';
 
@@ -551,7 +208,7 @@ async function sendMessage(){
   }
 }
 
-/* USERNAME logic */
+/* Username logic */
 async function isUsernameTakenInDB(name){
   try{
     const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
@@ -564,7 +221,6 @@ saveNameBtn.addEventListener('click', async () => {
   const name = usernameEl.value.trim();
   if(!name){ flashNameMsg('Enter a username'); return; }
 
-  // if name is in our old local list, allow switching back
   if(oldUsernames.includes(name)){
     currentUsername = name;
     localStorage.setItem('chatUsername', currentUsername);
@@ -573,7 +229,6 @@ saveNameBtn.addEventListener('click', async () => {
     return;
   }
 
-  // check DB if it's taken by someone else
   const taken = await isUsernameTakenInDB(name);
   if(taken){
     flashNameMsg('Username already taken');
@@ -581,7 +236,6 @@ saveNameBtn.addEventListener('click', async () => {
     return;
   }
 
-  // accept new username
   currentUsername = name;
   localStorage.setItem('chatUsername', currentUsername);
   if(!oldUsernames.includes(name)){ oldUsernames.push(name); localStorage.setItem('oldUsernames', JSON.stringify(oldUsernames)); }
@@ -589,7 +243,7 @@ saveNameBtn.addEventListener('click', async () => {
   flashNameMsg('Username saved');
 });
 
-/* initialize username UI */
+/* Initialize UI username */
 if(currentUsername){
   usernameEl.value = currentUsername;
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
@@ -597,21 +251,21 @@ if(currentUsername){
   currentUsernameLabel.textContent = 'Username: Guest';
 }
 
-/* Realtime subscription: on INSERT, refresh canonical list (and send notification if tab hidden) */
+/* Realtime subscription + notification while running/backgrounded */
 async function subscribeRealtime(){
   try{
     supabase.removeAllChannels();
     await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
-        // show notification if tab hidden and permission granted
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        // notification if tab hidden
         if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
           if(navigator.serviceWorker && navigator.serviceWorker.controller){
-            navigator.serviceWorker.controller.postMessage({ type:'notify', title:`${payload.new.username}`, body: payload.new.message ?? '' });
+            navigator.serviceWorker.controller.postMessage({ type:'notify', title: `${payload.new.username}`, body: payload.new.message ?? '' });
           } else {
             new Notification(`${payload.new.username}`, { body: payload.new.message ?? '' });
           }
         }
-        // refresh canonical list
+        // reload canonical list
         loadMessages();
       })
       .subscribe();
@@ -621,13 +275,13 @@ async function subscribeRealtime(){
   }
 }
 
-/* Polling fallback for "0 sec" feel */
+/* Poll fallback for instant feel (0.5s) */
 function startPolling(){
   if(pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(loadMessages, 500); // 0.5s refresh
+  pollTimer = setInterval(loadMessages, 500);
 }
 
-/* Service worker blob (in-page) for background while browser is running */
+/* Blob SW for in-page notifications while browser runs */
 const swBlobCode = `
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => self.clients.claim());
@@ -647,112 +301,53 @@ self.addEventListener('notificationclick', e => {
 });
 `;
 
-/* Register blob SW + (optionally) firebase worker registration attempt if firebaseConfig provided */
-async function registerBlobSwAndFcm(){
+/* Register SW and optionally FCM worker at root (if firebaseConfig.apiKey provided and file exists) */
+async function registerSwAndMaybeFcm(){
   if(!('serviceWorker' in navigator)) return;
   try{
     const blob = new Blob([swBlobCode], { type:'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-    await navigator.serviceWorker.register(blobUrl);
-    console.log('Blob service worker registered.');
-
-    // optional: if user filled firebaseConfig & has firebase-messaging-sw.js at site root, try registering it
+    const url = URL.createObjectURL(blob);
+    await navigator.serviceWorker.register(url);
+    console.log('Blob SW registered');
     if(firebaseConfig.apiKey){
       try{
-        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('Registered firebase-messaging-sw.js at root:', reg.scope);
-        // Attempt to register FCM token (function below)
-        await registerFcmToken(reg);
-      }catch(e){
-        console.warn('Registering firebase-messaging-sw.js failed. Ensure the file exists at site root to enable closed-browser push.', e);
-      }
+        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('Attempted to register firebase-messaging-sw.js at site root.');
+      }catch(e){ console.warn('firebase SW register failed (ensure file exists at root)', e); }
     }
-  }catch(e){ console.warn('service worker blob failed', e); }
+  }catch(e){ console.warn('service worker registration failed', e); }
 }
 
-/* Optional FCM token registration (requires firebaseConfig filled and firebase-messaging-sw.js present at root) */
-async function registerFcmToken(registration){
-  try{
-    if(!firebaseConfig.apiKey) return;
-    const [{ initializeApp }, { getMessaging, getToken, onMessage }] = await Promise.all([
-      import('https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js')
-    ]);
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
+/* Optional: FCM registration saved tokens (if firebaseConfig provided and firebase-messaging-sw.js exists)
+   Implementation omitted here — enable when you create firebase config and SW at root.
+*/
 
-    const perm = await Notification.requestPermission();
-    if(perm !== 'granted'){ console.log('Notif permission not granted for FCM'); return; }
-
-    const token = await getToken(messaging, { vapidKey: FIREBASE_VAPID_KEY, serviceWorkerRegistration: registration });
-    console.log('FCM token:', token);
-
-    // try to save to Supabase (optional table push_subscriptions must exist)
-    try{
-      await supabase.from('push_subscriptions').insert([{ token, created_at: new Date().toISOString() }]);
-      console.log('Saved FCM token to push_subscriptions (if table exists).');
-    }catch(e){ console.warn('Saving FCM token failed (create push_subscriptions table to save tokens)', e); }
-
-    onMessage(messaging, payload => {
-      const n = payload.notification;
-      if(n && Notification.permission === 'granted') new Notification(n.title, { body: n.body });
-    });
-
-  }catch(e){ console.warn('registerFcmToken error', e); }
-}
-
-/* INIT */
 (async function init(){
-  // register in-page SW & optional FCM worker
-  await registerBlobSwAndFcm();
-
+  await registerSwAndMaybeFcm();
   if('Notification' in window && Notification.permission !== 'granted'){
-    try{ await Notification.requestPermission(); } catch(e){ console.warn(e); }
+    try{ await Notification.requestPermission(); }catch(e){ console.warn(e); }
   }
 
-  // initial load & live updates
   await loadMessages();
   await subscribeRealtime();
   startPolling();
 
-  // UI handlers
   sendBtn.addEventListener('click', sendMessage);
   messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
-  saveNameBtn.addEventListener('click', () => saveNameBtn.click()); // saveName wired above
-
   window.addEventListener('online', resendPending);
 })();
 
 /* Helpful SQL to run in Supabase SQL editor if messages table missing:
--- 1) create messages table
 create table if not exists public.messages (
   id bigserial primary key,
   username text not null,
   message text not null,
   created_at timestamptz default now() not null
 );
-
--- 2) enable RLS and allow anon browser use (run if you use anon key in browser)
 alter table public.messages enable row level security;
-
-create policy if not exists "public_select_messages" on public.messages
-  for select using (true);
-
-create policy if not exists "public_insert_messages" on public.messages
-  for insert with check (true);
-
--- Optional: push_subscriptions table for FCM token storage
-create table if not exists public.push_subscriptions (
-  id bigserial primary key,
-  token text not null,
-  created_at timestamptz default now()
-);
-
-alter table public.push_subscriptions enable row level security;
-create policy if not exists "public_insert_subs" on public.push_subscriptions for insert with check (true);
-create policy if not exists "public_select_subs" on public.push_subscriptions for select using (true);
+create policy if not exists "public_select_messages" on public.messages for select using (true);
+create policy if not exists "public_insert_messages" on public.messages for insert with check (true);
 */
-
 </script>
 </body>
 </html>
