@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Realtime Chat — Full Features</title>
+<title>Modern Chat</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
 body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px; }
 .wrap { width:100%; max-width:720px; }
-h1 { text-align:center; color:#60a5fa; margin-bottom:10px; }
+h1 { text-align:center; color:#60a5fa; margin-bottom:10px; font-size:1.5rem; font-weight:700; } /* smaller title */
 .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap; }
 #currentUsername { color:#94a3b8; font-size:0.95rem; }
 #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
-#chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; }
+#chat { background:#071127; border-radius:8px; padding:12px; height:300px; overflow-y:auto; border:1px solid #132033; } /* shorter height */
 .message { margin-bottom:10px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .username { color:#60a5fa; font-weight:700; margin-right:8px; }
 .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; }
@@ -31,7 +31,7 @@ h1 { text-align:center; color:#60a5fa; margin-bottom:10px; }
 <body>
 <div id="status" class="offline">Offline</div>
 <div class="wrap">
-  <h1>Modern Chat App (Realtime + Features)</h1>
+  <h1>Modern Chat</h1>
   <div class="top">
     <div>
       <span id="currentUsername">Username: Guest</span>
@@ -72,7 +72,7 @@ const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
 
 let currentUsername = localStorage.getItem('chatUsername') || '';
-let autoScroll = localStorage.getItem('autoScroll') !== 'false'; // default ON
+let autoScroll = localStorage.getItem('autoScroll') !== 'false';
 
 function updateAutoScrollBtn() {
   autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
