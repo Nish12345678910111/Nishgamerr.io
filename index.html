@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat — Supabase Realtime (Delete enabled)</title>
+<title>Chat — Supabase Realtime (Delete + Smart Scroll)</title>
 
 <!-- Supabase client -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
@@ -16,7 +16,7 @@
   }
   body{background:var(--bg); color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;
         display:flex; justify-content:center; padding:24px; margin:0;}
-  .wrap{width:100%; max-width:768px;}
+  .wrap{width:100%; max-width:768px; position:relative;}
   h1{color:var(--accent); text-align:center; margin-bottom:12px;}
   .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
   #currentUsername{color:var(--muted);}
@@ -38,11 +38,27 @@
   #status{position:fixed; right:16px; top:16px; padding:8px 12px; border-radius:8px; font-weight:700; box-shadow:var(--shadow);}
   .online{background:var(--ok); color:#052e0b;} .offline{background:#dc2626; color:#2b0202;}
   #errorBox{margin-top:8px; color:var(--err); min-height:1.2em;}
+  /* new messages indicator */
+  #newBadge{
+    position: absolute;
+    right: 18px;
+    bottom: 86px; /* above controls */
+    background: var(--accent);
+    color: #021124;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight:700;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    display:none;
+    z-index: 50;
+  }
   @media (max-width: 600px) {
     #chat { height: 280px; }
     body { padding:16px; }
     #username { width:100%; max-width:220px; margin-top:6px; }
     .top { flex-direction: column; align-items:flex-start; gap:8px; }
+    #newBadge { bottom: 100px; right: 14px; }
   }
 </style>
 </head>
@@ -65,6 +81,8 @@
 
     <div id="chat" role="log" aria-live="polite"></div>
 
+    <div id="newBadge">New messages ▾</div>
+
     <div id="controls">
       <input id="messageInput" placeholder="Type a message" autocomplete="off" />
       <button id="sendBtn">Send</button>
@@ -75,11 +93,11 @@
 
 <script type="module">
 /* ---------------------
-   CONFIG (only change these)
+   CONFIG (only change if needed)
    --------------------- */
 const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2bmJ4ZGNxbWZzbm52YnVnYXNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2OTE5NjIsImV4cCI6MjA3NjI2Nzk2Mn0.vQELSSzCZtFi8jXGWcc8Qn_PV0W_dpmd_R3nF3zg0H0';
-/* Optional FCM support: fill to enable closed-browser push (see comments below) */
+/* Optional FCM - leave blank unless you set up firebase-messaging-sw.js at site root */
 const firebaseConfig = { apiKey: "", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"24163130777", appId:"" };
 const FIREBASE_VAPID_KEY = "BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ";
 /* --------------------- */
@@ -97,13 +115,13 @@ const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
+const newBadge = document.getElementById('newBadge');
 
-/* STATE */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
-const PENDING_KEY = 'chat_pending_v_del_v1';
+const PENDING_KEY = 'chat_pending_v_del_scroll_v1';
 
-/* NETWORK UI */
+/* Networking UI */
 function updateNetworkUI(){
   const online = navigator.onLine;
   statusEl.textContent = online ? 'Online' : 'Offline';
@@ -114,29 +132,53 @@ window.addEventListener('online', updateNetworkUI);
 window.addEventListener('offline', updateNetworkUI);
 updateNetworkUI();
 
-/* HELPERS */
+/* Utils */
 function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function fmtTime(ts){ if(!ts) return '??:??'; const d=new Date(ts); if(isNaN(d)) return '??:??'; return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }); }
+function fmtTime(ts){ if(!ts) return '??:??'; const d=new Date(ts); if(isNaN(d)) return '??:??'; return d.toLocaleString('en-IN',{ day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }); }
 function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
 function flashNameMsg(txt){ nameMsgEl.textContent = txt; setTimeout(()=> nameMsgEl.textContent='', 2200); }
 
-/* PENDING QUEUE */
+/* Pending queue helpers */
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); }
-function savePending(arr){ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
+function savePending(a){ localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
 function addPending(obj){ const a=getPending(); a.push(obj); savePending(a); }
 function removePending(obj){ const a=getPending().filter(x => JSON.stringify(x) !== JSON.stringify(obj)); savePending(a); }
 
-/* CREATE element for a message row (DB row or pending object).
-   If dbRow has id, include data-id. If the message belongs to currentUsername, show delete button.
-   pending parameter true => message from pending queue (no DB id), delete removes from pending.
-*/
-function createMessageElement(dbRow, { pending=false } = {}){
-  const username = dbRow.username ?? dbRow.user ?? 'Unknown';
-  const message = dbRow.message ?? dbRow.text ?? '';
-  const created_at = dbRow.created_at ?? dbRow.createdAt ?? new Date().toISOString();
+/* Smart scroll tracking */
+let userAtBottom = true;
+function checkIfAtBottom(){
+  const threshold = 60; // px from bottom counts as "at bottom"
+  const nearBottom = (chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight) <= threshold;
+  userAtBottom = nearBottom;
+  if(userAtBottom) hideNewBadge();
+}
+chatEl.addEventListener('scroll', () => {
+  checkIfAtBottom();
+});
+
+/* New messages badge */
+function showNewBadge(){ newBadge.style.display = 'block'; }
+function hideNewBadge(){ newBadge.style.display = 'none'; }
+newBadge.addEventListener('click', () => {
+  scrollToBottom();
+  hideNewBadge();
+});
+
+/* Scroll to bottom with smooth behavior */
+function scrollToBottom(){
+  chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+  userAtBottom = true;
+}
+
+/* Create message element with delete button for own messages */
+function createMessageElement(row, { pending=false } = {}){
+  const username = row.username ?? row.user ?? 'Unknown';
+  const message = row.message ?? row.text ?? '';
+  const created_at = row.created_at ?? row.createdAt ?? new Date().toISOString();
+
   const wrapper = document.createElement('div');
   wrapper.className = 'message' + (pending ? ' pending' : '');
-  // left content
+  // content
   const content = document.createElement('div');
   content.className = 'msgContent';
   content.innerHTML = `<span class="username">${escapeHtml(username)}</span>
@@ -144,38 +186,33 @@ function createMessageElement(dbRow, { pending=false } = {}){
                        <span class="ts">[${fmtTime(created_at)}]</span>`;
   wrapper.appendChild(content);
 
-  // delete button only for messages sent by current user (or pending messages we created)
-  const owned = (currentUsername && username === currentUsername);
-  if(owned){
-    const btn = document.createElement('button');
-    btn.className = 'delBtn';
-    btn.textContent = 'Delete';
-    btn.title = 'Delete this message';
-    btn.addEventListener('click', async (e) => {
+  // ownership check (only show delete for messages authored by currentUsername)
+  const isOwner = currentUsername && username === currentUsername;
+  if(isOwner){
+    const del = document.createElement('button');
+    del.className = 'delBtn';
+    del.textContent = 'Delete';
+    del.title = 'Delete this message';
+    del.addEventListener('click', async (e) => {
       e.stopPropagation();
-      // confirm quick
       if(!confirm('Delete this message?')) return;
-      // if pending, remove from pending queue only
       if(pending){
-        removePending(dbRow);
-        // remove from UI
+        // remove from local pending queue
+        removePending(row);
         wrapper.remove();
         return;
       }
-      // if db row, must have id to delete
-      const id = dbRow.id ?? dbRow.message_id ?? dbRow.id;
+      const id = row.id ?? row.message_id ?? null;
       if(!id){
-        showError('Cannot delete: message id missing.');
+        showError('Cannot delete (no id).');
         return;
       }
       try{
-        // attempt delete on Supabase
         const { error } = await supabase.from('messages').delete().eq('id', id);
         if(error){
           console.error('delete error', error);
-          showError('Delete failed (check permissions).');
+          showError('Delete failed (check DB policies).');
         } else {
-          // remove element from UI
           wrapper.remove();
         }
       }catch(err){
@@ -183,28 +220,26 @@ function createMessageElement(dbRow, { pending=false } = {}){
         showError('Delete exception (see console).');
       }
     });
-    wrapper.appendChild(btn);
+    wrapper.appendChild(del);
   }
 
   return wrapper;
 }
 
-/* Display multiple messages (clears chat first) */
-function renderMessagesList(rows){
+/* Render list (DB rows then pending) */
+function renderList(dbRows){
   chatEl.innerHTML = '';
-  rows.forEach(r => {
+  (dbRows || []).forEach(r => {
     const el = createMessageElement(r, { pending:false });
     chatEl.appendChild(el);
   });
-  // render pending items after DB rows
-  getPending().forEach(p => {
-    const el = createMessageElement(p, { pending:true });
-    chatEl.appendChild(el);
-  });
-  chatEl.scrollTop = chatEl.scrollHeight;
+  // append pending items at the end with pending flag
+  getPending().forEach(p => chatEl.appendChild(createMessageElement(p, { pending:true })));
+  // auto scroll if user at bottom
+  if(userAtBottom) scrollToBottom();
 }
 
-/* LOAD messages from DB */
+/* Load messages from DB */
 async function loadMessages(){
   try{
     const { data, error } = await supabase.from('messages').select('id,username,message,created_at').order('created_at', { ascending: true });
@@ -213,14 +248,14 @@ async function loadMessages(){
       showError('Failed to load messages (check DB/policies).');
       return;
     }
-    renderMessagesList(data || []);
+    renderList(data || []);
   }catch(e){
     console.error('unexpected load error', e);
-    showError('Unexpected load error.');
+    showError('Unexpected load error (see console).');
   }
 }
 
-/* RESEND pending */
+/* Resend pending items */
 async function resendPending(){
   const queue = getPending();
   if(!queue.length) return;
@@ -228,25 +263,23 @@ async function resendPending(){
     try{
       const { error } = await supabase.from('messages').insert([{ username: p.username, message: p.message }]);
       if(!error) removePending(p);
-    }catch(e){
-      console.error('resend pending error', e);
-    }
+    }catch(e){ console.error('resend error', e); }
   }
-  // reload after attempt
   await loadMessages();
 }
 
-/* SEND message (optimistic and queue when offline) */
+/* Send message (optimistic + queue) */
 async function sendMessage(){
   const txt = messageInput.value.trim();
   if(!txt) return;
   if(!currentUsername){ flashNameMsg('Set username first'); return; }
 
   const obj = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-  // show optimistic (pending if offline)
+
+  // optimistic local show (pending if offline)
   const el = createMessageElement(obj, { pending: !navigator.onLine });
   chatEl.appendChild(el);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if(userAtBottom) scrollToBottom();
   messageInput.value = '';
 
   if(!navigator.onLine){
@@ -258,11 +291,10 @@ async function sendMessage(){
     const { error } = await supabase.from('messages').insert([{ username: currentUsername, message: txt }]);
     if(error){
       console.error('insert error', error);
-      showError('Send failed; queued locally.');
       addPending(obj);
+      showError('Send failed; queued locally.');
     } else {
-      // load messages to refresh ids and allow deletion
-      await loadMessages();
+      await loadMessages(); // refresh to get ids (enable delete)
     }
   }catch(e){
     console.error('send exception', e);
@@ -271,14 +303,16 @@ async function sendMessage(){
   }
 }
 
-/* USERNAME logic */
+/* Username handling */
 async function isUsernameTakenInDB(name){
   try{
     const { data, error } = await supabase.from('messages').select('id').eq('username', name).limit(1);
     if(error){ console.error('username check error', error); return true; }
-    return (data && data.length > 0);
+    return data && data.length > 0;
   }catch(e){ console.error(e); return true; }
 }
+
+const saveNameBtn = document.getElementById('saveName');
 saveNameBtn.addEventListener('click', async () => {
   const name = usernameEl.value.trim();
   if(!name){ flashNameMsg('Enter a username'); return; }
@@ -304,7 +338,7 @@ saveNameBtn.addEventListener('click', async () => {
   await loadMessages();
 });
 
-/* Initialize username UI */
+/* Init username UI */
 if(currentUsername){
   usernameEl.value = currentUsername;
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
@@ -313,13 +347,17 @@ if(currentUsername){
   currentUsernameLabel.textContent = 'Username: Guest';
 }
 
-/* Realtime subscription - we reload canonical list on INSERT and optionally notify when tab hidden */
+/* Realtime subscription: on new message, decide whether to auto-scroll or show badge */
 async function subscribeRealtime(){
   try{
     supabase.removeAllChannels();
     await supabase.channel('realtime-messages')
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
-        // if tab hidden and user not author show notification via SW or Notification
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        // If user scrolled up, show badge instead of auto-scrolling
+        if(!userAtBottom){
+          showNewBadge();
+        }
+        // notify if hidden
         if(Notification.permission === 'granted' && document.hidden && payload.new.username !== currentUsername){
           if(navigator.serviceWorker && navigator.serviceWorker.controller){
             navigator.serviceWorker.controller.postMessage({ type:'notify', title:`${payload.new.username}`, body: payload.new.message ?? '' });
@@ -337,14 +375,14 @@ async function subscribeRealtime(){
   }
 }
 
-/* Poll fallback */
+/* Poll fallback for near-instant refresh (keeps realtime + instant feel) */
 let pollTimer = null;
 function startPolling(){
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(loadMessages, 500);
 }
 
-/* In-page small SW for notifications while browser runs */
+/* Small blob SW for in-page notifications while browser runs */
 const swCode = `
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => self.clients.claim());
@@ -374,47 +412,45 @@ async function registerBlobSw(){
   }catch(e){ console.warn('SW register failed', e); return null; }
 }
 
-/* Optional FCM token registration omitted by default; enable if you add firebaseConfig and firebase SW at root. */
+/* Request notification permission non-blocking */
+async function ensureNotifPerm(){ if('Notification' in window && Notification.permission !== 'granted'){ try{ await Notification.requestPermission(); }catch(e){ console.warn(e);} } }
 
-/* INIT */
+/* Wire UI and init */
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+
 (async function init(){
   await registerBlobSw();
-  if('Notification' in window && Notification.permission !== 'granted'){
-    try{ await Notification.requestPermission(); }catch(e){ console.warn(e); }
-  }
+  await ensureNotifPerm();
   await loadMessages();
   await subscribeRealtime();
   startPolling();
-
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+  // track scroll position initially
+  checkIfAtBottom();
+  // hide badge if scrolled to bottom
+  chatEl.addEventListener('scroll', () => { if(userAtBottom) hideNewBadge(); });
   window.addEventListener('online', resendPending);
 })();
 
-/* Helpful SQL for Supabase (run in SQL editor if messages table missing and to allow delete):
--- create messages table
-create table if not exists public.messages (
+/* Helpful SQL (run in Supabase SQL editor) for table and delete policy:
+CREATE TABLE IF NOT EXISTS public.messages (
   id bigserial primary key,
   username text not null,
   message text not null,
   created_at timestamptz default now() not null
 );
 
--- allow simple browser access with anon key (if you want)
-alter table public.messages enable row level security;
+-- If you want the browser anon key to be able to delete only messages they own:
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
-create policy if not exists "public_select_messages" on public.messages
-  for select using (true);
+CREATE POLICY "allow_select" ON public.messages FOR SELECT USING (true);
+CREATE POLICY "allow_insert" ON public.messages FOR INSERT WITH CHECK (true);
 
-create policy if not exists "public_insert_messages" on public.messages
-  for insert with check (true);
-
--- **CAUTION**: To allow client-side DELETE by the user, add a policy that ensures only the message owner can delete:
-create policy if not exists "user_delete_own" on public.messages
-  for delete using (auth.role() = 'anon' OR username = auth.jwt().sub::text) with check (username = auth.jwt().sub::text);
-
--- Alternatively, implement delete via a secure Edge Function that checks ownership on server-side.
+-- WARNING: client-side DELETE can be dangerous. Example policy restricting delete to message owner
+-- (requires some way to map authenticated user to username; adjust to your auth setup)
+-- CREATE POLICY "allow_delete_own" ON public.messages FOR DELETE USING (username = auth.jwt() ->> 'email');
+-- OR use a server-side Edge Function to handle deletes securely.
 */
 </script>
 </body>
-  </html>
+</html>
