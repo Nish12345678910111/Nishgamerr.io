@@ -28,106 +28,310 @@
   }
   #inputBox {display:flex; width:95%; max-width:500px; gap:5px;}
   input, button {
-    padding:8px; border:none; border-radius:6px; outline:none;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Modern Chat</title>
+<style>
+  /* Old compact GUI (kept exactly) */
+  :root{
+    --bg:#0b1220; --card:#071127; --muted:#94a3b8; --accent:#60a5fa;
+    --btn:#2563eb; --danger:#fb7185; --input:#0f1724;
   }
-  input {flex:1;}
-  button {background:#444; color:#fff; cursor:pointer;}
-  button:hover {background:#666;}
-  #autoScrollToggle {
-    position:fixed; bottom:10px; right:10px;
-    background:#333; border:none; color:#fff;
-    border-radius:6px; padding:6px 10px; cursor:pointer;
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#e6eef8}
+  .wrap{width:100%;max-width:760px;margin:18px auto;padding:12px}
+  h1{font-size:1.05rem;margin:0 0 10px;text-align:center;color:var(--accent)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  #leftTop{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;gap:8px;align-items:center}
+  #currentUsername{color:var(--muted);font-size:0.95rem}
+  input[type="text"]{background:var(--input);color:#e6eef8;border:1px solid #1f2937;padding:8px 10px;border-radius:8px}
+  #username{width:220px}
+  #saveName,#changeBackBtn,#delAllBtn,#autoScrollBtn,#sendBtn{
+    background:var(--btn);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer
+  }
+  #chat{background:var(--card);border-radius:8px;padding:12px;height:360px;overflow-y:auto;border:1px solid #132033}
+  .message{margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02)}
+  .leftMsg{display:flex;gap:8px;align-items:center;flex:1}
+  .username{color:var(--accent);font-weight:700;min-width:90px}
+  .text{color:#e6eef8;word-break:break-word}
+  .ts{color:var(--muted);font-size:0.78rem;white-space:nowrap;margin-left:8px}
+  .delSmall{width:18px;height:18px;font-size:12px;border-radius:3px;border:none;background:var(--danger);color:white;cursor:pointer;flex-shrink:0}
+  #controls{display:flex;gap:8px;margin-top:12px;align-items:center}
+  #messageInput{flex:1;padding:10px;border-radius:8px;border:1px solid #1f2937;background:var(--input);color:#e6eef8}
+  #nameMsg{color:var(--danger);font-size:0.85rem;min-height:1.2em;margin-top:6px}
+  .smallNote{color:var(--muted);font-size:0.82rem;margin-top:8px}
+  @media (max-width:600px){
+    #username{width:140px}
+    #chat{height:280px}
   }
 </style>
 </head>
 <body>
-<h2>Modern Chat</h2>
-<div id="chatBox"></div>
+  <div class="wrap">
+    <h1>Modern Chat</h1>
 
-<div id="inputBox">
-  <input id="msgInput" placeholder="Type message...">
-  <button onclick="sendMsg()">Send</button>
-  <button onclick="deleteAllMine()">Del All Mine</button>
-</div>
+    <div class="top">
+      <div id="leftTop">
+        <div class="row">
+          <span id="currentUsername">Username: Guest</span>
+          <input id="username" type="text" placeholder="Enter username" />
+          <button id="saveName">Save</button>
+          <button id="changeBackBtn" title="Switch to previous saved username">Switch back</button>
+        </div>
+        <div id="nameMsg"></div>
+      </div>
 
-<button id="autoScrollToggle" onclick="toggleAutoScroll()">AutoScroll: ON</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="autoScrollBtn">Auto Scroll: ON</button>
+        <button id="delAllBtn">Delete All (mine)</button>
+      </div>
+    </div>
+
+    <div id="chat" role="log" aria-live="polite"></div>
+
+    <div id="controls">
+      <input id="messageInput" type="text" placeholder="Type a message" />
+      <button id="sendBtn">Send</button>
+    </div>
+
+    <div class="smallNote">Messages saved in this browser only. Open another tab to sync instantly.</div>
+  </div>
 
 <script>
-let messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-let username = localStorage.getItem("username") || prompt("Enter your username:");
-if (!username) username = "Guest"+Math.floor(Math.random()*1000);
-localStorage.setItem("username", username);
+/* ---------- Client-only chat using localStorage ---------- */
 
-let autoScroll = true;
+/* Keys in localStorage */
+const MSG_KEY = 'chat_messages_v1';
+const USER_KEY = 'chat_username_v1';
+const OLD_USERS_KEY = 'chat_old_usernames_v1';
+const OWNED_IDS_KEY = 'chat_owned_ids_v1';
+const AUTO_SCROLL_KEY = 'chat_autoscroll_v1';
 
-function saveMessages() {
-  localStorage.setItem("chatMessages", JSON.stringify(messages));
+/* Device id to identify owned messages */
+let deviceId = localStorage.getItem('chat_device_id');
+if(!deviceId){ deviceId = crypto.randomUUID(); localStorage.setItem('chat_device_id', deviceId); }
+
+/* DOM refs */
+const chatEl = document.getElementById('chat');
+const usernameInput = document.getElementById('username');
+const saveNameBtn = document.getElementById('saveName');
+const changeBackBtn = document.getElementById('changeBackBtn');
+const currentUsernameSpan = document.getElementById('currentUsername');
+const nameMsg = document.getElementById('nameMsg');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const delAllBtn = document.getElementById('delAllBtn');
+const autoScrollBtn = document.getElementById('autoScrollBtn');
+
+let autoScroll = localStorage.getItem(AUTO_SCROLL_KEY) !== 'false';
+
+/* Load / save helpers */
+function loadMessages(){ try{ return JSON.parse(localStorage.getItem(MSG_KEY) || '[]'); }catch(e){ return []; } }
+function saveMessages(arr){ localStorage.setItem(MSG_KEY, JSON.stringify(arr)); }
+function getOldUsernames(){ try{ return JSON.parse(localStorage.getItem(OLD_USERS_KEY) || '[]'); }catch(e){ return []; } }
+function saveOldUsernames(a){ localStorage.setItem(OLD_USERS_KEY, JSON.stringify(a)); }
+function getOwnedIds(){ try{ return JSON.parse(localStorage.getItem(OWNED_IDS_KEY) || '[]'); }catch(e){ return []; } }
+function saveOwnedIds(a){ localStorage.setItem(OWNED_IDS_KEY, JSON.stringify(a)); }
+function setUsernameLocal(u){ localStorage.setItem(USER_KEY, u); }
+
+/* Utility */
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function fmtTime(ts){ try{ return new Date(ts).toLocaleString(); }catch(e){ return '??'; } }
+function flashNameMsg(txt){ nameMsg.textContent = txt; setTimeout(()=> { if(nameMsg.textContent === txt) nameMsg.textContent = ''; }, 2200); }
+
+/* Current username */
+let currentUsername = localStorage.getItem(USER_KEY) || '';
+let oldUsernames = getOldUsernames();
+if(currentUsername){
+  usernameInput.value = currentUsername;
+  currentUsernameSpan.textContent = 'Username: ' + currentUsername;
+} else {
+  // keep blank input (no alert prompt)
+  currentUsernameSpan.textContent = 'Username: Guest';
 }
 
-function renderChat() {
-  const chatBox = document.getElementById("chatBox");
-  chatBox.innerHTML = "";
-  for (const m of messages) {
-    const div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `<b>${m.user}</b>: ${m.text}
-      <span>${m.time}</span>`;
-    if (m.user === username) {
-      const del = document.createElement("button");
-      del.className = "delBtn";
-      del.textContent = "×";
-      del.onclick = () => deleteMsg(m.id);
-      div.appendChild(del);
+/* Auto-scroll UI */
+function updateAutoScrollBtn(){ autoScrollBtn.textContent = 'Auto Scroll: ' + (autoScroll ? 'ON' : 'OFF'); }
+updateAutoScrollBtn();
+
+/* Render chat */
+function renderChat(){
+  const msgs = loadMessages();
+  chatEl.innerHTML = '';
+  for(const m of msgs){
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message';
+    wrapper.dataset.id = m.id;
+    const left = document.createElement('div'); left.className = 'leftMsg';
+    left.innerHTML = `<div class="username">${escapeHtml(m.username)}</div><div class="text">${escapeHtml(m.message)}</div><div class="ts">${escapeHtml(fmtTime(m.created_at))}</div>`;
+    wrapper.appendChild(left);
+
+    // Only show delete button for messages owned by this device
+    if(m.device_id && m.device_id === deviceId){
+      const btn = document.createElement('button');
+      btn.className = 'delSmall';
+      btn.title = 'Delete';
+      btn.innerText = '×';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSingle(m.id);
+      };
+      wrapper.appendChild(btn);
+    } else {
+      const spacer = document.createElement('div'); spacer.style.width = '22px'; wrapper.appendChild(spacer);
     }
-    chatBox.appendChild(div);
+    chatEl.appendChild(wrapper);
   }
-  if (autoScroll) chatBox.scrollTop = chatBox.scrollHeight;
+  if(autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-function sendMsg() {
-  const input = document.getElementById("msgInput");
-  const text = input.value.trim();
-  if (!text) return;
-  const now = new Date();
-  const msg = {
-    id: Date.now(),
-    user: username,
-    text,
-    time: now.toLocaleString()
-  };
-  messages.push(msg);
-  saveMessages();
-  input.value = "";
+/* Add message */
+function addMessage(username, text){
+  const msgs = loadMessages();
+  const id = Date.now() + Math.floor(Math.random()*999);
+  const row = { id, username, message: text, created_at: new Date().toISOString(), device_id: deviceId };
+  msgs.push(row);
+  saveMessages(msgs);
+  // track owned id
+  const owned = getOwnedIds();
+  owned.push(String(id));
+  saveOwnedIds(owned);
   renderChat();
 }
 
-function deleteMsg(id) {
-  messages = messages.filter(m => m.id !== id || m.user !== username);
-  saveMessages();
+/* Send message handler */
+function sendMessage(){
+  const txt = messageInput.value.trim();
+  if(!txt) return;
+  if(!currentUsername){ flashNameMsg('Set username first'); return; }
+  addMessage(currentUsername, txt);
+  messageInput.value = '';
+}
+
+/* Delete single message (no confirm) */
+function deleteSingle(id){
+  let msgs = loadMessages();
+  const idx = msgs.findIndex(m => String(m.id) === String(id));
+  if(idx === -1) return;
+  // only delete if owned (device_id matches)
+  if(msgs[idx].device_id !== deviceId){
+    // silent fail (or show small error)
+    flashNameMsg('Cannot delete: not your message');
+    return;
+  }
+  msgs.splice(idx,1);
+  saveMessages(msgs);
+  // remove owned id
+  const owned = getOwnedIds().filter(x => x !== String(id));
+  saveOwnedIds(owned);
   renderChat();
 }
 
-function deleteAllMine() {
-  if (!confirm("Delete all your messages?")) return;
-  messages = messages.filter(m => m.user !== username);
-  saveMessages();
+/* Delete all my messages (two confirms + one success alert) */
+function deleteAllMine(){
+  if(!currentUsername){ flashNameMsg('Set username first'); return; }
+  const c1 = confirm('Are you sure you want to delete ALL your messages?');
+  if(!c1) return;
+  const c2 = confirm('This will permanently delete your messages. Confirm again?');
+  if(!c2) return;
+  let msgs = loadMessages();
+  msgs = msgs.filter(m => m.device_id !== deviceId); // remove those owned by this device
+  saveMessages(msgs);
+  localStorage.removeItem(OWNED_IDS_KEY);
   renderChat();
-  alert("All your messages deleted.");
+  alert('All your messages deleted.');
 }
 
-function toggleAutoScroll() {
+/* Username save logic (no alert) */
+/* - If user tries to pick a username that exists in messages and is not in oldUsernames,
+     show inline message "Username already taken" (no alert).
+   - If username is in oldUsernames, allow switching back to it.
+*/
+saveNameBtn.addEventListener('click', () => {
+  const name = usernameInput.value.trim();
+  if(!name){ flashNameMsg('Enter a username'); return; }
+  // if user switches back to a previously saved name, allow silently
+  if(oldUsernames.includes(name)){
+    currentUsername = name;
+    setUsernameLocal(currentUsername);
+    currentUsernameSpan.textContent = 'Username: ' + currentUsername;
+    flashNameMsg('Switched to saved username');
+    return;
+  }
+  // check existing messages for that username (local-only check)
+  const msgs = loadMessages();
+  const exists = msgs.some(m => m.username.toLowerCase() === name.toLowerCase());
+  if(exists){
+    flashNameMsg('Username already taken');
+    // do not override currentUsername
+    usernameInput.value = currentUsername || '';
+    return;
+  }
+  // accept new name
+  currentUsername = name;
+  setUsernameLocal(currentUsername);
+  // store in oldUsernames so we can switch back later
+  if(!oldUsernames.includes(name)){
+    oldUsernames.push(name);
+    saveOldUsernames(oldUsernames);
+  }
+  currentUsernameSpan.textContent = 'Username: ' + currentUsername;
+  flashNameMsg('Username saved');
+});
+
+changeBackBtn.addEventListener('click', () => {
+  if(!oldUsernames.length){ flashNameMsg('No saved username'); return; }
+  // choose last saved username (excluding current)
+  const last = oldUsernames.slice().reverse().find(n => n !== currentUsername);
+  if(!last){ flashNameMsg('No other saved username'); return; }
+  currentUsername = last;
+  setUsernameLocal(currentUsername);
+  usernameInput.value = currentUsername;
+  currentUsernameSpan.textContent = 'Username: ' + currentUsername;
+  flashNameMsg('Switched to saved username');
+});
+
+/* Auto-scroll toggle */
+autoScrollBtn.addEventListener('click', () => {
   autoScroll = !autoScroll;
-  document.getElementById("autoScrollToggle").textContent =
-    "AutoScroll: " + (autoScroll ? "ON" : "OFF");
-}
+  localStorage.setItem(AUTO_SCROLL_KEY, autoScroll ? 'true' : 'false');
+  updateAutoScrollBtn();
+});
 
-function refreshChat() {
-  messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-  renderChat();
-}
+/* Keyboard shortcuts */
+messageInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendMessage();
+});
+usernameInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') saveNameBtn.click();
+});
 
+/* Sync across tabs: listen to storage events and re-render */
+window.addEventListener('storage', (e) => {
+  if(e.key === MSG_KEY || e.key === USER_KEY || e.key === OLD_USERS_KEY){
+    // reload local state and render
+    currentUsername = localStorage.getItem(USER_KEY) || currentUsername;
+    usernameInput.value = currentUsername || '';
+    currentUsernameSpan.textContent = currentUsername ? 'Username: ' + currentUsername : 'Username: Guest';
+    oldUsernames = getOldUsernames();
+    renderChat();
+  }
+});
+
+/* Initial render & 1s refresh */
 renderChat();
-setInterval(refreshChat, 1000);
+setInterval(() => {
+  // re-render in case another tab updated messages
+  renderChat();
+}, 1000);
+
+/* Wire send button */
+sendBtn.addEventListener('click', sendMessage);
+delAllBtn.addEventListener('click', deleteAllMine);
+
 </script>
 </body>
 </html>
