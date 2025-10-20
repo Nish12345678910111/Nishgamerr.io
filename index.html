@@ -1,221 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat App — Fixed All Features</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Realtime Chat</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
-body { background:#0b1220; color:#e6eef8; font-family: Inter, system-ui, sans-serif; display:flex; justify-content:center; padding:18px; }
-.wrap { width:100%; max-width:720px; }
-h1 { text-align:center; color:#60a5fa; margin-bottom:10px; }
-.top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
-#currentUsername { color:#94a3b8; font-size:0.95rem; }
-#username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
-#chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; }
-.message { margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
-.message span { margin-right:6px; }
-.username { color:#60a5fa; font-weight:700; margin-right:8px; font-size:0.92rem; }
-.ts { color:#94a3b8; font-size:0.78rem; margin-left:8px; }
-#controls { display:flex; gap:8px; margin-top:10px; }
-#messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937; }
-#sendBtn, .delBtn, #delAllBtn, #autoScrollBtn { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; }
-#sendBtn { background:#2563eb; color:white; }
-.delBtn { background:#dc2626; color:white; margin-left:6px; }
-#delAllBtn { background:#f59e0b; color:#0b1220; }
-#autoScrollBtn { background:#16a34a; color:#052e0b; margin-left:6px; }
-#nameMsg { color:#fb7185; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
-.pending { opacity:0.6; font-style:italic; }
-#status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700; }
-.online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
-#errorBox { margin-top:8px; color:#fecaca; min-height:1.2em; }
+body{font-family:sans-serif;background:#121212;color:#eee;margin:0;display:flex;flex-direction:column;height:100vh}
+#header{background:#222;padding:8px;text-align:center}
+#status{font-weight:bold;margin-left:6px}
+#chat{flex:1;overflow-y:auto;padding:10px}
+.msg{margin:6px 0;padding:6px 10px;background:#1e1e1e;border-radius:10px}
+.msg.mine{background:#29403b}
+.controls{display:flex;padding:8px;gap:5px;background:#222}
+input,button{padding:8px;border:none;border-radius:6px}
+input{flex:1;background:#1e1e1e;color:#fff}
+button{background:#4b6bff;color:white;cursor:pointer}
+button:hover{background:#698bff}
+.topBtns{display:flex;justify-content:center;gap:8px;padding:5px;background:#181818}
+.online{color:#0f0}.offline{color:#f33}
 </style>
 </head>
 <body>
-<div id="status" class="offline">Offline</div>
-
-<div class="wrap">
-<h1>Modern Chat App (Fixed)</h1>
-
-<div class="top">
-  <div>
-    <span id="currentUsername">Username: Guest</span>
-    <input id="username" placeholder="Enter username" />
-    <button id="saveName">Save</button>
-    <div id="nameMsg"></div>
-  </div>
-  <div>
-    <button id="autoScrollBtn">Auto Scroll: ON</button>
-    <button id="delAllBtn">Delete All</button>
-  </div>
+<div id="header">Realtime Chat | Status: <span id="status" class="offline">Offline</span></div>
+<div class="topBtns">
+  <button id="toggleScroll">AutoScroll ON</button>
+  <button id="deleteMine">Delete All Mine</button>
+</div>
+<div id="chat"></div>
+<div class="controls">
+  <input id="username" placeholder="Username">
+  <input id="message" placeholder="Type a message">
+  <button id="send">Send</button>
 </div>
 
-<div id="chat" role="log" aria-live="polite"></div>
+<script>
+const supabaseUrl='https://latrynkftllkwkesmohg.supabase.co';
+const supabaseKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHJ5bmtmdGxsa3drZXNtb2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4OTg5MzgsImV4cCI6MjA3NjQ3NDkzOH0.DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k';
+const supabase = supabase.createClient(supabaseUrl,supabaseKey);
+const chat=document.getElementById('chat');
+const msgInput=document.getElementById('message');
+const nameInput=document.getElementById('username');
+const sendBtn=document.getElementById('send');
+const delMine=document.getElementById('deleteMine');
+const statusEl=document.getElementById('status');
+const toggleBtn=document.getElementById('toggleScroll');
+let autoScroll=true;
+let username=localStorage.getItem('username')||'';
+if(username) nameInput.value=username;
 
-<div id="controls">
-  <input id="messageInput" placeholder="Type a message" />
-  <button id="sendBtn">Send</button>
-</div>
-
-<div id="errorBox"></div>
-</div>
-
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-const SUPABASE_URL = 'https://latrynkftllkwkesmohg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHJ5bmtmdGxsa3drZXNtb2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4OTg5MzgsImV4cCI6MjA3NjQ3NDkzOH0.DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime:{ timeout:15000 } });
-
-/* DOM */
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const nameMsgEl = document.getElementById('nameMsg');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
-const delAllBtn = document.getElementById('delAllBtn');
-const autoScrollBtn = document.getElementById('autoScrollBtn');
-
-/* STATE */
-let currentUsername = localStorage.getItem('chatUsername') || '';
-let pendingMessages = JSON.parse(localStorage.getItem('chatPending')||'[]');
-let autoScroll = true;
-
-/* Network status */
+/* connectivity */
 async function checkConnectivity(){
-  try {
-    const { data, error } = await supabase.from('messages').select('id').limit(1);
-    if(error) { statusEl.textContent='Offline'; statusEl.className='offline'; return; }
-    statusEl.textContent='Online'; statusEl.className='online';
-  } catch { statusEl.textContent='Offline'; statusEl.className='offline'; }
+ try{
+   const {error}=await supabase.from('messages').select('id').limit(1);
+   if(error){statusEl.textContent='Offline';statusEl.className='offline';}
+   else{statusEl.textContent='Online';statusEl.className='online';}
+ }catch{statusEl.textContent='Offline';statusEl.className='offline';}
 }
-setInterval(checkConnectivity, 10000); // keep checking every 10s
-checkConnectivity();
+setInterval(checkConnectivity,10000);checkConnectivity();
 
-/* Helpers */
-function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function fmtTime(ts){ const d=new Date(ts); return isNaN(d)?'??:??':d.toLocaleString(undefined,{ hour:'2-digit', minute:'2-digit', hour12:true }); }
-function showError(msg){ errorBox.textContent=msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },4000); }
-function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2200); }
-
-/* Display message row */
-function displayMessageRow(row, { pending=false }={}){
-  const div = document.createElement('div');
-  div.className='message'+(pending?' pending':'');
-  div.dataset.id=row.id||'';
-  div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>
-                   <span class="text">${escapeHtml(row.message)}</span>
-                   <span class="ts">[${fmtTime(row.created_at)}]</span>`;
-  const delBtn = document.createElement('button');
-  delBtn.className='delBtn'; delBtn.textContent='Del';
-  delBtn.onclick = async()=>{
-    if(pending){
-      pendingMessages = pendingMessages.filter(m=>JSON.stringify(m)!==JSON.stringify(row));
-      localStorage.setItem('chatPending', JSON.stringify(pendingMessages));
-      div.remove();
-      return;
-    }
-    if(!row.id){ showError('Cannot delete'); return; }
-    try{
-      const { error } = await supabase.from('messages').delete().eq('id', row.id);
-      if(error){ showError('Delete failed'); return; }
-      div.remove();
-    } catch(e){ showError('Delete failed'); console.error(e); }
-  };
-  div.appendChild(delBtn);
-  chatEl.appendChild(div);
-  if(autoScroll) chatEl.scrollTop=chatEl.scrollHeight;
-}
-
-/* Load messages */
+/* load messages */
 async function loadMessages(){
-  try{
-    const { data, error } = await supabase.from('messages').select().order('created_at',{ascending:true});
-    if(error){ showError('Failed to load messages'); return; }
-    chatEl.innerHTML='';
-    data.forEach(r=>displayMessageRow(r));
-    pendingMessages.forEach(p=>displayMessageRow(p,{pending:true}));
-  } catch(e){ showError('Load failed'); console.error(e); }
+ const {data,error}=await supabase.from('messages').select('*').order('id',{ascending:true});
+ if(error){chat.innerHTML='<p>Failed to load messages</p>';return;}
+ chat.innerHTML='';
+ data.forEach(addMessage);
+ if(autoScroll) chat.scrollTop=chat.scrollHeight;
 }
 
-/* Send message */
+/* add message element */
+function addMessage(m){
+ const div=document.createElement('div');
+ div.className='msg'+(m.username===username?' mine':'');
+ div.innerHTML=`<b>${m.username}</b>: ${m.message}
+ <small style="opacity:.6;float:right">${new Date(m.created_at).toLocaleTimeString()}</small>`;
+ if(m.username===username){
+   const del=document.createElement('button');
+   del.textContent='🗑';
+   del.style.float='right';del.style.marginLeft='5px';del.onclick=()=>deleteMessage(m.id);
+   div.appendChild(del);
+ }
+ chat.appendChild(div);
+ if(autoScroll) chat.scrollTop=chat.scrollHeight;
+}
+
+/* send message */
 async function sendMessage(){
-  const txt=messageInput.value.trim(); if(!txt) return;
-  if(!currentUsername){ flashNameMsg('Set username first'); return; }
-  const row={username:currentUsername,message:txt,created_at:new Date().toISOString()};
-  displayMessageRow(row,{pending:!navigator.onLine});
-  messageInput.value='';
-  if(!navigator.onLine){ pendingMessages.push(row); localStorage.setItem('chatPending', JSON.stringify(pendingMessages)); return; }
-  try{
-    const { data, error } = await supabase.from('messages').insert([{username:currentUsername,message:txt}]).select();
-    if(error){ pendingMessages.push(row); localStorage.setItem('chatPending', JSON.stringify(pendingMessages)); showError('Send failed'); return; }
-    // update id in row to allow delete
-    const div=chatEl.querySelector(`.message.pending:last-child`);
-    if(div && data[0]) div.dataset.id=data[0].id;
-    pendingMessages=pendingMessages.filter(m=>JSON.stringify(m)!==JSON.stringify(row));
-    localStorage.setItem('chatPending', JSON.stringify(pendingMessages));
-    div.classList.remove('pending');
-  }catch(e){ pendingMessages.push(row); localStorage.setItem('chatPending', JSON.stringify(pendingMessages)); showError('Send exception'); }
+ const msg=msgInput.value.trim();
+ username=nameInput.value.trim()||'Anon';
+ if(!msg)return;
+ localStorage.setItem('username',username);
+ const {error}=await supabase.from('messages')
+   .insert([{username,message:msg}],{headers:{username}});
+ if(!error) msgInput.value='';
+}
+sendBtn.onclick=sendMessage;
+msgInput.addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage();});
+
+/* delete one */
+async function deleteMessage(id){
+ const {error}=await supabase.from('messages').delete().eq('id',id).eq('username',username);
+ if(error) console.error(error);
 }
 
-/* Username save */
-saveNameBtn.addEventListener('click', ()=>{ 
-  const name=usernameEl.value.trim(); 
-  if(!name){ flashNameMsg('Enter username'); return; }
-  currentUsername=name; localStorage.setItem('chatUsername',currentUsername); currentUsernameLabel.textContent='Username: '+currentUsername;
-  flashNameMsg('Username saved'); 
-});
-
-/* Auto scroll toggle */
-autoScrollBtn.addEventListener('click',()=>{
-  autoScroll=!autoScroll;
-  autoScrollBtn.textContent='Auto Scroll: '+(autoScroll?'ON':'OFF');
-});
-
-/* Delete all */
-delAllBtn.addEventListener('click', async()=>{
-  try{
-    const { error } = await supabase.from('messages').delete().neq('id',0); 
-    if(error){ showError('Delete all failed'); return; }
-    chatEl.innerHTML=''; pendingMessages=[]; localStorage.setItem('chatPending','[]');
-  }catch(e){ showError('Delete all failed'); console.error(e); }
-});
-
-/* Realtime subscription */
-async function subscribeRealtime(){
-  supabase.removeAllChannels();
-  await supabase.channel('realtime-messages')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'}, payload=>{
-      displayMessageRow(payload.new);
-    }).subscribe();
+/* delete all mine */
+delMine.onclick=async()=>{
+ if(!confirm('Delete all your messages?'))return;
+ const {error}=await supabase.from('messages').delete().eq('username',username);
+ if(error)alert('Delete failed');
 }
 
-/* Init */
-(async function init(){
-  await loadMessages();
-  await subscribeRealtime();
-  sendBtn.addEventListener('click',sendMessage);
-  messageInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
-  window.addEventListener('online', async()=>{
-    pendingMessages.forEach(async(row)=>{
-      try{
-        const { data, error } = await supabase.from('messages').insert([{username:row.username,message:row.message}]).select();
-        if(!error){
-          row.id=data[0].id;
-          const div=chatEl.querySelector(`.message.pending:last-child`);
-          if(div){ div.dataset.id=row.id; div.classList.remove('pending'); }
-        }
-      }catch(e){ console.error(e); }
-    });
-    pendingMessages=[];
-    localStorage.setItem('chatPending','[]');
-  });
-})();
+/* toggle scroll */
+toggleBtn.onclick=()=>{
+ autoScroll=!autoScroll;
+ toggleBtn.textContent=autoScroll?'AutoScroll ON':'AutoScroll OFF';
+};
+
+/* realtime */
+supabase.channel('room')
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},
+    payload=>{addMessage(payload.new);})
+  .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},
+    payload=>{loadMessages();})
+  .subscribe();
+
+/* init */
+loadMessages();
 </script>
 </body>
 </html>
