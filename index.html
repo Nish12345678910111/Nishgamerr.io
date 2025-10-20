@@ -14,7 +14,7 @@
   #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; }
   #chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; }
   .message { margin-bottom:10px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; }
-  .messageText { flex:1; }
+  .messageText { flex:1; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
   .username { color:#60a5fa; font-weight:700; margin-right:6px; font-size:0.95rem; }
   .text { font-size:0.95rem; word-break: break-word; }
   .ts { color:#94a3b8; font-size:0.75rem; margin-left:4px; }
@@ -31,29 +31,29 @@
 </style>
 </head>
 <body>
-  <div id="status" class="offline">Offline</div>
-  <div class="wrap">
-    <h1>Modern Chat (fixed)</h1>
+<div id="status" class="offline">Offline</div>
+<div class="wrap">
+  <h1>Modern Chat (fixed)</h1>
 
-    <div class="top">
-      <div>
-        <span id="currentUsername">Username: Guest</span>
-        <input id="username" placeholder="Enter username" />
-        <button id="saveName">Save</button>
-        <div id="nameMsg"></div>
-      </div>
-      <div style="color:#94a3b8">Dark • Realtime</div>
+  <div class="top">
+    <div>
+      <span id="currentUsername">Username: Guest</span>
+      <input id="username" placeholder="Enter username" />
+      <button id="saveName">Save</button>
+      <div id="nameMsg"></div>
     </div>
-
-    <div id="chat" role="log" aria-live="polite"></div>
-
-    <div class="controls">
-      <input id="messageInput" placeholder="Type a message" />
-      <button id="sendBtn">Send</button>
-    </div>
-
-    <div id="errorBox"></div>
+    <div style="color:#94a3b8">Dark • Realtime</div>
   </div>
+
+  <div id="chat" role="log" aria-live="polite"></div>
+
+  <div class="controls">
+    <input id="messageInput" placeholder="Type a message" />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <div id="errorBox"></div>
+</div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -63,7 +63,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
 
-/* DOM */
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
@@ -74,79 +73,60 @@ const sendBtn = document.getElementById('sendBtn');
 const statusEl = document.getElementById('status');
 const errorBox = document.getElementById('errorBox');
 
-/* STATE */
 let currentUsername = localStorage.getItem('chatUsername') || '';
 let oldUsernames = JSON.parse(localStorage.getItem('oldUsernames') || '[]');
 const PENDING_KEY = 'chat_pending_v1';
 
-/* ========== NETWORK ========== */
-async function checkConnectivity(){
-  try {
-    const { data, error } = await supabase.from('messages').select('id').limit(1);
-    if(error){ setOffline(); return; }
-    setOnline();
-  } catch { setOffline(); }
-}
-function setOnline(){ statusEl.textContent='Online'; statusEl.className='online'; resendPending(); }
-function setOffline(){ statusEl.textContent='Offline'; statusEl.className='offline'; }
-window.addEventListener('online', setOnline);
-window.addEventListener('offline', setOffline);
-checkConnectivity();
-
-/* ========== HELPERS ========== */
 function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 function fmtTime(ts){ return new Date(ts).toLocaleString(); }
-function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; }, 4000); }
+function showError(msg){ errorBox.textContent=msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },4000); }
 function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2200); }
 
 function getPending(){ return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]'); }
-function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY, JSON.stringify(a)); }
-function removePendingItem(m){ const a=getPending(); const remaining=a.filter(x=>JSON.stringify(x)!==JSON.stringify(m)); localStorage.setItem(PENDING_KEY, JSON.stringify(remaining)); }
+function addPending(obj){ const a=getPending(); a.push(obj); localStorage.setItem(PENDING_KEY,JSON.stringify(a)); }
+function removePendingItem(m){ const a=getPending(); const remaining=a.filter(x=>JSON.stringify(x)!==JSON.stringify(m)); localStorage.setItem(PENDING_KEY,JSON.stringify(remaining)); }
 
-/* ========== DISPLAY ========== */
 function displayMessageRow(row, { pending=false }={}){
-  const username = row.username ?? 'Unknown';
-  const message = row.message ?? '';
-  const created_at = row.created_at ?? new Date().toISOString();
+  const username=row.username||'Unknown';
+  const message=row.message||'';
+  const created_at=row.created_at||new Date().toISOString();
 
-  const div = document.createElement('div');
+  const div=document.createElement('div');
   div.className='message'+(pending?' pending':'');
-  const inner = document.createElement('div'); inner.className='messageText';
+  div.dataset.id=row.id||'temp_'+Math.random();
+
+  const inner=document.createElement('div'); inner.className='messageText';
   inner.innerHTML=`<span class="username">${escapeHtml(username)}</span>: <span class="text">${escapeHtml(message)}</span>
                    <span class="ts">[${fmtTime(created_at)}]</span>`;
   div.appendChild(inner);
 
-  // delete button for own messages
-  if(username===currentUsername){
-    const delBtn = document.createElement('button');
-    delBtn.textContent='Delete'; delBtn.className='deleteBtn';
+  if(username===currentUsername && row.id){
+    const delBtn=document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='deleteBtn';
     delBtn.addEventListener('click', async ()=>{
-      try {
+      try{
         const { error } = await supabase.from('messages').delete().eq('id', row.id);
         if(error){ showError('Delete failed'); return; }
         div.remove();
-      } catch(e){ showError('Delete error'); console.error(e); }
+      }catch(e){ showError('Delete error'); console.error(e); }
     });
     div.appendChild(delBtn);
   }
 
   chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  chatEl.scrollTop=chatEl.scrollHeight;
 }
 
-/* ========== LOAD / SEND ========== */
 async function loadMessages(){
-  try {
+  try{
     const { data, error } = await supabase.from('messages').select().order('created_at',{ascending:true});
-    if(error){ console.error(error); showError('Failed to load messages'); return; }
+    if(error){ console.error(error); showError('Load failed'); return; }
     chatEl.innerHTML=''; data.forEach(r=>displayMessageRow(r));
     getPending().forEach(p=>displayMessageRow(p,{pending:true}));
-  } catch(e){ console.error(e); showError('Unexpected load error'); }
+  }catch(e){ console.error(e); showError('Unexpected load error'); }
 }
 
 async function sendMessage(){
-  const txt = messageInput.value.trim();
-  if(!txt){ return; }
+  const txt=messageInput.value.trim(); if(!txt) return;
   if(!currentUsername){ flashNameMsg('Set username first'); return; }
 
   const row={username:currentUsername,message:txt,created_at:new Date().toISOString()};
@@ -154,34 +134,37 @@ async function sendMessage(){
   messageInput.value='';
 
   if(!navigator.onLine){ addPending(row); return; }
-  try {
-    const { error } = await supabase.from('messages').insert([row]);
-    if(error){ addPending(row); showError('Send failed; queued locally'); }
-  } catch(e){ addPending(row); showError('Send exception; queued locally'); console.error(e); }
 
-  // log IP
-  try {
+  try{
+    const { data, error } = await supabase.from('messages').insert([row]).select().single();
+    if(error){ addPending(row); showError('Send failed'); return; }
+    row.id=data.id;
+    // refresh display for delete button
+    chatEl.querySelectorAll('.message').forEach(div=>{
+      if(div.dataset.id.startsWith('temp_')){ div.remove(); displayMessageRow(row); }
+    });
+  }catch(e){ addPending(row); showError('Send error'); console.error(e); }
+
+  try{
     const ip = await fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(j=>j.ip);
     await supabase.from('ip_log').insert([{username:currentUsername, ip, created_at:new Date().toISOString()}]);
-  } catch(e){ console.warn('IP log failed',e); }
+  }catch(e){ console.warn('IP log failed',e); }
 }
 
 async function resendPending(){
-  const arr = getPending();
-  if(!arr.length) return;
+  const arr=getPending(); if(!arr.length) return;
   for(const p of [...arr]){
-    try { const { error } = await supabase.from('messages').insert([p]); if(!error) removePendingItem(p); } 
-    catch(e){ console.error('resend error', e); }
+    try{ const { data, error } = await supabase.from('messages').insert([p]).select().single();
+      if(!error){ removePendingItem(p); p.id=data.id; displayMessageRow(p); }
+    }catch(e){ console.error('resend error', e); }
   }
 }
 
-/* ========== USERNAME ========== */
 async function isUsernameTakenInDB(name){
-  try {
-    const { data, error } = await supabase.from('messages').select('id').eq('username',name).limit(1);
-    if(error){ console.error(error); return true; }
-    return (data && data.length>0);
-  } catch(e){ console.error(e); return true; }
+  try{
+    const { data } = await supabase.from('messages').select('id').eq('username',name).limit(1);
+    return data && data.length>0;
+  }catch{return true;}
 }
 
 saveNameBtn.addEventListener('click', async ()=>{
@@ -193,50 +176,39 @@ saveNameBtn.addEventListener('click', async ()=>{
   currentUsernameLabel.textContent='Username: '+name; flashNameMsg('Username saved');
 });
 
-/* initialize username */
 if(currentUsername){ usernameEl.value=currentUsername; currentUsernameLabel.textContent='Username: '+currentUsername; }
 
-/* ========== REALTIME ========== */
 async function subscribeRealtime(){
   supabase.removeAllChannels();
   await supabase.channel('realtime-messages')
-    .on('postgres_changes',{event:'INSERT', schema:'public', table:'messages'}, payload=>{
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
       displayMessageRow(payload.new);
       if(Notification.permission==='granted' && document.hidden && payload.new.username!==currentUsername){
-        new Notification(`New: ${payload.new.username}`,{body: payload.new.message});
+        new Notification(`New: ${payload.new.username}`,{body:payload.new.message});
       }
     }).subscribe();
 }
 
-/* ========== POLLING FALLBACK ========== */
 let pollTimer=null;
 function startPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer=setInterval(loadMessages,700); }
 
-/* ========== SERVICE WORKER NOTIFY ========== */
-const swCode=`self.addEventListener('install',e=>self.skipWaiting());
-self.addEventListener('activate',e=>self.clients.claim());
-self.addEventListener('message',e=>{const d=e.data;if(!d||d.type!=='notify')return;
-self.registration.showNotification(d.title||'New message',{body:d.body||'',tag:'chat-notify',renotify:true});});
-self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window'}).then(list=>{for(const w of list)if(w.visibilityState==='visible')return w.focus();return clients.openWindow('/');}));});`;
-
-async function registerBlobSW(){
-  if(!('serviceWorker' in navigator)) return null;
-  try { const blob=new Blob([swCode],{type:'application/javascript'}); const url=URL.createObjectURL(blob); const reg=await navigator.serviceWorker.register(url); return reg; }
-  catch(e){ console.warn('SW failed',e); return null; }
-}
-
-async function ensureNotificationPermission(){ if('Notification' in window && Notification.permission!=='granted'){ try{ await Notification.requestPermission(); } catch{} } }
-
-/* ========== INIT ========== */
 (async function init(){
-  await registerBlobSW();
-  await ensureNotificationPermission();
-  await loadMessages();
-  await subscribeRealtime();
-  startPolling();
-  sendBtn.addEventListener('click',sendMessage);
-  messageInput.addEventListener('keydown',e=>{if(e.key==='Enter') sendMessage();});
-  window.addEventListener('online',resendPending);
+  await loadMessages(); await subscribeRealtime(); startPolling();
+  sendBtn.addEventListener('click', sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+
+  window.addEventListener('online', () => {
+    statusEl.textContent = 'Online';
+    statusEl.className = 'online';
+    resendPending();
+  });
+  window.addEventListener('offline', () => {
+    statusEl.textContent = 'Offline';
+    statusEl.className = 'offline';
+  });
+
+  if(!navigator.onLine){ statusEl.textContent='Offline'; statusEl.className='offline'; }
+  else{ statusEl.textContent='Online'; statusEl.className='online'; }
 })();
 </script>
 </body>
