@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supabase Realtime Chat</title>
+<title>Modern Chat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body {
@@ -30,15 +30,20 @@ header {
   flex: 1;
   overflow-y: auto;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 .message {
   background: #1e1e1e;
-  padding: 8px 12px;
-  margin: 6px 0;
+  padding: 6px 10px;
+  margin: 5px 0;
   border-radius: 8px;
   max-width: 80%;
-  white-space: pre-wrap;
   word-break: break-word;
+  font-size: 15px;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
 }
 .mine {
   background: #0044cc;
@@ -47,6 +52,11 @@ header {
 .other {
   background: #333;
   align-self: flex-start;
+}
+.meta {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 2px;
 }
 #inputBox {
   display: flex;
@@ -101,7 +111,7 @@ header {
 </head>
 <body>
 <header>
-  Supabase Realtime Chat
+  Modern Chat
   <div id="status" class="offline">Checking...</div>
 </header>
 
@@ -133,7 +143,7 @@ const statusEl = document.getElementById('status');
 let username = localStorage.getItem('username');
 let ipAddr = 'unknown';
 
-/* Connectivity Check */
+/* Fetch IP */
 async function fetchIP() {
   try {
     const r = await fetch('https://api.ipify.org?format=json');
@@ -144,6 +154,7 @@ async function fetchIP() {
   }
 }
 
+/* Connectivity */
 async function checkConnectivity() {
   try {
     const { error } = await supabase.from('todos').select('id').limit(1);
@@ -156,7 +167,6 @@ async function checkConnectivity() {
   }
 }
 
-// Listen for Supabase Realtime Connection Events
 if (supabase.realtime?.connection) {
   supabase.realtime.connection.on('open', () => {
     statusEl.textContent = 'Online';
@@ -175,7 +185,7 @@ if (supabase.realtime?.connection) {
 /* Load Messages */
 async function loadMessages() {
   chat.innerHTML = '';
-  const { data, error } = await supabase.from('messages').select('*').order('id');
+  const { data } = await supabase.from('messages').select('*').order('id');
   if (data) data.forEach(addMessage);
 }
 
@@ -183,7 +193,17 @@ async function loadMessages() {
 function addMessage(m) {
   const div = document.createElement('div');
   div.className = 'message ' + (m.username === username ? 'mine' : 'other');
-  div.textContent = `${m.username}: ${m.content}`;
+  
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const time = new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  meta.textContent = `[${time}] ${m.username}`;
+  
+  const text = document.createElement('div');
+  text.textContent = m.content;
+  
+  div.appendChild(meta);
+  div.appendChild(text);
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -196,7 +216,7 @@ async function sendMessage() {
   msgInput.value = '';
 }
 
-/* Save Username */
+/* Username Setup */
 saveUsername.onclick = () => {
   const name = usernameInput.value.trim();
   if (!name) return alert('Enter a username first!');
@@ -207,7 +227,7 @@ saveUsername.onclick = () => {
   sendBtn.disabled = false;
 };
 
-/* Real-time Subscribe */
+/* Realtime */
 supabase
   .channel('messages-channel')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -216,9 +236,7 @@ supabase
 
 /* Event Listeners */
 sendBtn.onclick = sendMessage;
-msgInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
-});
+msgInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
 /* Init */
 (async () => {
