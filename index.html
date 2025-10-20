@@ -190,15 +190,7 @@ async function sendMessage(){
     const {data,error}=await supabase.from('messages').insert([{username:currentUsername,message:txt,device_id:deviceId,created_at}]).select().maybeSingle();
     if(error){ showError('Send failed; queued locally.'); return; }
     if(data){ removePendingByMatch(currentUsername,txt,created_at); if(data.id) addOwnedId(String(data.id)); displayMessageRow(data); }
-  }catch(e){ showError('Send exception; queued locally.'); }
-}
-
-async function deleteMessage(row,domNode){
-  if(!row||!row.id) return false;
-  const owned=(row.device_id&&row.device_id===deviceId)||getOwnedIds().includes(String(row.id));
-  if(!owned){showError('Cannot delete: not owned');return false;}
-  try{
-    const {error}=await supabaseconst { error } = await supabase.from('messages').delete().eq('id', row.id);
+const { error } = await supabase.from('messages').delete().eq('id', row.id);
     if(error){ showError('Failed to delete'); return false; }
     removeOwnedId(row.id);
     if(domNode) domNode.remove();
