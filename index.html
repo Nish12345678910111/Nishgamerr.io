@@ -245,7 +245,7 @@
       if (delBtn) {
         const deleteBtn = div.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', () => {
-          alert('Delete not available due to server configuration (42P01 error). Contact admin to fix RLS policy.');
+          alert('Delete not available due to server configuration (42P01 error). Contact admin to fix RLS policy or enable DELETE with: DROP POLICY "Allow anon delete" ON public.messages; CREATE POLICY "Allow anon delete" ON public.messages FOR DELETE USING (username = old.username);');
           console.log(`Delete clicked for message ID: ${row.id}, but disabled due to 42P01`);
         });
       }
@@ -305,7 +305,7 @@
 
     // --- DELETE ALL MESSAGES ---
     deleteAllBtn.addEventListener('click', () => {
-      alert('Delete All not available due to server configuration (42P01 error). Contact admin to fix RLS policy.');
+      alert('Delete All not available due to server configuration (42P01 error). Contact admin to fix RLS policy or enable DELETE with: DROP POLICY "Allow anon delete" ON public.messages; CREATE POLICY "Allow anon delete" ON public.messages FOR DELETE USING (username = old.username);');
       console.log('Delete All clicked, but disabled due to 42P01');
     });
 
@@ -416,4 +416,4 @@
     init();
   </script>
 </body>
-  </html>
+                                                                                          </html>
