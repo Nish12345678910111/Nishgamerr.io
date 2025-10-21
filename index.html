@@ -99,7 +99,7 @@
         if (permission === 'granted') {
           await navigator.serviceWorker.register('/sw.js');
           const token = await messaging.getToken({
-            vapidKey: 'BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ' // Your VAPID key
+            vapidKey: 'BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ'
           });
           console.log('FCM Token:', token);
           localStorage.setItem('fcmToken', token);
@@ -110,13 +110,18 @@
     }
 
     // --- SHOW NOTIFICATION ---
-    async function showNotification(title, body) {
-      if (Notification.permission === 'granted' && document.hidden) {
-        const registration = await navigator.serviceWorker.ready;
-        registration.showNotification(title, {
-          body,
-          icon: 'https://nish12345678910111.github.io/Nishgamerr.io/icon.png'
-        });
+    async function showNotification(username, message) {
+      if (Notification.permission === 'granted' && (document.hidden || document.visibilityState === 'hidden')) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.showNotification(`New Message from ${username}`, {
+            body: message,
+            icon: 'https://nish12345678910111.github.io/Nishgamerr.io/icon.png'
+          });
+          console.log('Notification shown:', { username, message });
+        } catch (e) {
+          console.error('Notification error:', e);
+        }
       }
     }
 
@@ -297,7 +302,7 @@
           const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
           if (row.username !== currentUsername && !existing) {
             addMessageRow(row, false);
-            showNotification(`New Message from ${row.username}`, row.message);
+            showNotification(row.username, row.message); // Fixed notification
           } else if (existing && row.username === currentUsername) {
             existing.className = 'message new';
             existing.dataset.id = row.id;
@@ -311,7 +316,7 @@
             updateStatus('Online', 'online');
             isOnline = true;
             console.log('Real-time connected successfully');
-          } else if (status === 'CLOSED' || status == 'CHANNEL_ERROR') {
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             updateStatus('Offline', 'offline');
             isOnline = false;
             console.warn('Realtime disconnected. Retrying in 2s...');
@@ -344,4 +349,4 @@
     init();
   </script>
 </body>
-          </html>
+</html>
