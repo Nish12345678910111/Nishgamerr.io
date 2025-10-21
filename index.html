@@ -16,7 +16,7 @@
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
     #chat { background:#071127; border-radius:8px; padding:12px; height:285px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
     .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center;}
-    .message.new { background: #1e3a8a; }
+    .message.new { border-left: 3px solid #60a5fa; } /* Fixed: No blue fill, just blue border for notification */
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
     .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
@@ -97,7 +97,7 @@
     let statusTimeout = null;
     let clientIp = null;
     let lastRefresh = 0;
-    let messagesCache = new Map(); // Cache to track messages
+    let messagesCache = new Map();
 
     // --- DEBOUNCE REFRESH ---
     function refreshMessages() {
@@ -471,4 +471,4 @@
     init();
   </script>
 </body>
-  </html>
+    </html>
