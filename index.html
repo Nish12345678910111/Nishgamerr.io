@@ -1,289 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat App by Nishkarsh rana</title>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
-<style>
-body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px;}
-.wrap { width:100%; max-width:720px;}
-h1 { text-align:center; color:#60a5fa; margin-bottom:10px;}
-.top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
-#currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
-#username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
-#chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
-.message { margin-bottom:10px;}
-.username { color:#60a5fa; font-weight:700; margin-right:8px;}
-.ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
-#controls { display:flex; gap:8px; margin-top:4px;}
-#messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937;}
-button { border:none; border-radius:6px; cursor:pointer; }
-#sendBtn { background:#2563eb; color:white; padding:10px 14px;}
-#autoScrollBtn { background:#facc15; color:#1f2937; padding:8px 12px; font-size:0.85rem;}
-#deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem;}
-.pending { opacity:0.6; font-style:italic;}
-#status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700;}
-.online { background:#16a34a; color:#052e0b; } .offline { background:#dc2626; color:#2b0202; }
-#nameMsg { color:#fb7185; font-size:0.9rem; margin-top:4px; min-height:1.2em;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App by Nishkarsh Rana</title>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+  <style>
+    body { background:#0b1220; color:#e6eef8; font-family:Inter,system-ui,sans-serif; display:flex; justify-content:center; padding:18px;}
+    .wrap { width:100%; max-width:720px;}
+    h1 { text-align:center; color:#60a5fa; margin-bottom:10px;}
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
+    #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
+    #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
+    #chat { background:#071127; border-radius:8px; padding:12px; height:300px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
+    .message { margin-bottom:10px;}
+    .username { color:#60a5fa; font-weight:700; margin-right:8px;}
+    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
+    #controls { display:flex; gap:8px; margin-top:4px;}
+    #messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937;}
+    button { border:none; border-radius:6px; cursor:pointer; }
+    #sendBtn { background:#2563eb; color:white; padding:10px 14px;}
+    #autoScrollBtn { background:#facc15; color:#1f2937; padding:8px 12px; font-size:0.85rem;}
+    #deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem;}
+    .pending { opacity:0.6; font-style:italic;}
+    #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700;}
+    .online { background:#16a34a; color:#052e0b; } 
+    .offline { background:#dc2626; color:#2b0202; }
+    #nameMsg { color:#fb7185; font-size:0.9rem; margin-top:4px; min-height:1.2em;}
+  </style>
 </head>
 <body>
-<div id="status" class="offline">Offline</div>
-<div class="wrap">
-  <h1>Chat App — by Nishgamerr</h1>
-
-  <div class="top">
-    <div>
-      <span id="currentUsername">Username: Guest</span><br>
-      <input id="username" placeholder="Enter username or switch to previous">
-      <button id="saveName">Save/Switch</button>
-      <button id="autoScrollBtn">Auto-Scroll: On</button>
-      <button id="deleteAllBtn">Delete All My Messages</button>
-      <div id="nameMsg"></div>
+  <div id="status" class="offline">Offline</div>
+  <div class="wrap">
+    <h1>Chat App — by Nishgamerr</h1>
+    <div class="top">
+      <div>
+        <span id="currentUsername">Username: Guest</span><br>
+        <input id="username" placeholder="Enter username or switch to previous">
+        <button id="saveName">Save/Switch</button>
+        <button id="autoScrollBtn">Auto-Scroll: On</button>
+        <button id="deleteAllBtn">Delete All My Messages</button>
+        <div id="nameMsg"></div>
+      </div>
+      <div style="color:#94a3b8">Old GUI • Realtime</div>
     </div>
-    <div style="color:#94a3b8">Old GUI • Realtime</div>
+    <div id="chat" role="log" aria-live="polite"></div>
+    <div id="controls">
+      <input id="messageInput" placeholder="Type a message">
+      <button id="sendBtn">Send</button>
+    </div>
   </div>
 
-  <div id="chat" role="log" aria-live="polite"></div>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-  <div id="controls">
-    <input id="messageInput" placeholder="Type a message">
-    <button id="sendBtn">Send</button>
-  </div>
-</div>
+    const SUPABASE_URL = 'https://latrynkftllkwkesmohg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHJ5bmtmdGxsa3drZXNtb2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4OTg5MzgsImV4cCI6MjA3NjQ3NDkzOH0.DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      realtime: {
+        params: { eventsPerSecond: 100 }
+      }
+    });
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const chatEl = document.getElementById('chat');
+    const usernameEl = document.getElementById('username');
+    const saveNameBtn = document.getElementById('saveName');
+    const currentUsernameLabel = document.getElementById('currentUsername');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusEl = document.getElementById('status');
+    const autoScrollBtn = document.getElementById('autoScrollBtn');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    const nameMsgEl = document.getElementById('nameMsg');
 
-const SUPABASE_URL = 'https://latrynkftllkwkesmohg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHJ5bmtmdGxsa3drZXNtb2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4OTg5MzgsImV4cCI6MjA3NjQ3NDkzOH0.DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k';
+    let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
+    let autoScroll = true;
+    let clientIp = null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const chatEl = document.getElementById('chat');
-const usernameEl = document.getElementById('username');
-const saveNameBtn = document.getElementById('saveName');
-const currentUsernameLabel = document.getElementById('currentUsername');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const autoScrollBtn = document.getElementById('autoScrollBtn');
-const deleteAllBtn = document.getElementById('deleteAllBtn');
-const nameMsgEl = document.getElementById('nameMsg');
-
-let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
-let autoScroll = true;
-let clientIp = null;
-
-// --- FETCH CLIENT IP ---
-async function getClientIp() {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
-  } catch (e) {
-    console.error('Failed to fetch IP:', e);
-    return 'unknown';
-  }
-}
-
-// --- SAVE USERNAME TO IP ---
-async function saveUsernameToIp(ip, username) {
-  try {
-    const { error } = await supabase.from('user_ips').insert([{ ip_address: ip, username }]);
-    if (error && error.code !== '23505') throw error; // Ignore duplicate entry error
-  } catch (e) {
-    console.error('Failed to save username to IP:', e);
-  }
-}
-
-// --- LOAD USERNAMES FOR IP ---
-async function loadUsernamesForIp(ip) {
-  try {
-    const { data, error } = await supabase.from('user_ips').select('username').eq('ip_address', ip);
-    if (error) throw error;
-    return data.map(item => item.username);
-  } catch (e) {
-    console.error('Failed to load usernames for IP:', e);
-    return [];
-  }
-}
-
-// --- CHECK USERNAME AVAILABILITY ---
-async function isUsernameAvailable(username) {
-  try {
-    const { data, error } = await supabase.from('messages').select('username').eq('username', username).limit(1);
-    if (error) throw error;
-    return data.length === 0;
-  } catch (e) {
-    console.error('Error checking username:', e);
-    return false;
-  }
-}
-
-// --- NETWORK STATUS ---
-async function checkConnectivity() {
-  try {
-    const { data, error } = await supabase.from('messages').select('id').limit(1);
-    if (error) throw error;
-    statusEl.textContent = 'Online';
-    statusEl.className = 'online';
-  } catch (e) {
-    statusEl.textContent = 'Offline';
-    statusEl.className = 'offline';
-  }
-}
-window.addEventListener('online', checkConnectivity);
-window.addEventListener('offline', checkConnectivity);
-checkConnectivity();
-
-// --- HELPERS ---
-function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
-function fmtTime(ts) { const d = new Date(ts); return isNaN(d) ? '??:??' : d.toLocaleString(); }
-function flashNameMsg(txt) { nameMsgEl.textContent = txt; setTimeout(() => nameMsgEl.textContent = '', 2000); }
-
-// --- DISPLAY MESSAGE ---
-function addMessageRow(row, pending = false) {
-  const div = document.createElement('div');
-  div.className = 'message' + (pending ? ' pending' : '');
-  div.dataset.id = row.id;
-  const delBtn = row.username === currentUsername ? ` <button class="delete-btn">X</button>` : '';
-  div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
-  <span class="text">${escapeHtml(row.message)}</span> 
-  <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
-  chatEl.appendChild(div);
-  if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
-
-  // delete message
-  if (delBtn) {
-    div.querySelector('.delete-btn').addEventListener('click', async () => {
+    // --- FETCH CLIENT IP ---
+    async function getClientIp() {
       try {
-        const { error } = await supabase.from('messages').delete().eq('id', row.id).eq('username', currentUsername);
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip;
+      } catch (e) {
+        console.error('Failed to fetch IP:', e);
+        return 'unknown';
+      }
+    }
+
+    // --- SAVE USERNAME TO IP ---
+    async function saveUsernameToIp(ip, username) {
+      try {
+        const { error } = await supabase.from('user_ips').insert([{ ip_address: ip, username }]);
+        if (error && error.code !== '23505') throw error; // Ignore duplicate entry error
+      } catch (e) {
+        console.error('Failed to save username to IP:', e);
+      }
+    }
+
+    // --- LOAD USERNAMES FOR IP ---
+    async function loadUsernamesForIp(ip) {
+      try {
+        const { data, error } = await supabase.from('user_ips').select('username').eq('ip_address', ip);
         if (error) throw error;
-        div.remove();
+        return data.map(item => item.username);
+      } catch (e) {
+        console.error('Failed to load usernames for IP:', e);
+        return [];
+      }
+    }
+
+    // --- CHECK USERNAME AVAILABILITY ---
+    async function isUsernameAvailable(username) {
+      try {
+        const { data, error } = await supabase.from('messages').select('username').eq('username', username).limit(1);
+        if (error) throw error;
+        return data.length === 0;
+      } catch (e) {
+        console.error('Error checking username:', e);
+        return false;
+      }
+    }
+
+    // --- NETWORK STATUS ---
+    async function checkConnectivity() {
+      try {
+        const { data, error } = await supabase.from('messages').select('id').limit(1);
+        if (error) throw error;
+        statusEl.textContent = 'Online';
+        statusEl.className = 'online';
+      } catch (e) {
+        statusEl.textContent = 'Offline';
+        statusEl.className = 'offline';
+      }
+    }
+    window.addEventListener('online', checkConnectivity);
+    window.addEventListener('offline', checkConnectivity);
+    checkConnectivity();
+
+    // --- HELPERS ---
+    function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
+    function fmtTime(ts) { const d = new Date(ts); return isNaN(d) ? '??:??' : d.toLocaleString(); }
+    function flashNameMsg(txt) { nameMsgEl.textContent = txt; setTimeout(() => nameMsgEl.textContent = '', 2000); }
+
+    // --- DISPLAY MESSAGE ---
+    function addMessageRow(row, pending = false) {
+      console.log('Adding message:', row); // Debug log
+      const div = document.createElement('div');
+      div.className = 'message' + (pending ? ' pending' : '');
+      div.dataset.id = row.id;
+      const delBtn = row.username === currentUsername ? ` <button class="delete-btn">X</button>` : '';
+      div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
+      <span class="text">${escapeHtml(row.message)}</span> 
+      <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
+      chatEl.appendChild(div);
+      if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
+
+      // Delete message
+      if (delBtn) {
+        div.querySelector('.delete-btn').addEventListener('click', async () => {
+          try {
+            const { error } = await supabase.from('messages').delete().eq('id', row.id).eq('username', currentUsername);
+            if (error) throw error;
+            div.remove();
+          } catch (e) { alert('Delete failed'); }
+        });
+      }
+    }
+
+    // --- LOAD MESSAGES ---
+    async function loadMessages() {
+      try {
+        const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+        if (error) throw error;
+        chatEl.innerHTML = '';
+        data.forEach(r => addMessageRow(r, false));
+      } catch (e) { console.error('Load messages error:', e); }
+    }
+
+    // --- SEND MESSAGE ---
+    async function sendMessage() {
+      const txt = messageInput.value.trim();
+      if (!txt) return;
+      const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+      addMessageRow(row, true);
+      messageInput.value = '';
+      try {
+        const { error } = await supabase.from('messages').insert([row]);
+        if (error) throw error;
+        await saveUsernameToIp(clientIp, currentUsername);
+      } catch (e) {
+        console.error('Send failed:', e);
+        alert('Send failed');
+      }
+    }
+
+    // --- AUTO SCROLL ---
+    autoScrollBtn.addEventListener('click', () => {
+      autoScroll = !autoScroll;
+      autoScrollBtn.textContent = 'Auto-Scroll: ' + (autoScroll ? 'On' : 'Off');
+    });
+
+    // --- DELETE ALL ---
+    deleteAllBtn.addEventListener('click', async () => {
+      if (!confirm('Delete all your messages?')) return;
+      try {
+        const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
+        if (error) throw error;
+        loadMessages();
       } catch (e) { alert('Delete failed'); }
     });
-  }
-}
 
-// --- LOAD MESSAGES ---
-async function loadMessages() {
-  try {
-    const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-    if (error) throw error;
-    chatEl.innerHTML = '';
-    data.forEach(r => addMessageRow(r, false));
-  } catch (e) { console.error(e); }
-}
+    // --- USERNAME ---
+    saveNameBtn.addEventListener('click', async () => {
+      const val = usernameEl.value.trim();
+      if (!val) {
+        flashNameMsg('Enter a username');
+        return;
+      }
+      if (val === currentUsername) {
+        flashNameMsg('Already using this username');
+        return;
+      }
 
-// --- SEND MESSAGE ---
-async function sendMessage() {
-  const txt = messageInput.value.trim();
-  if (!txt) return;
-  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-  addMessageRow(row, true);
-  messageInput.value = '';
-  try {
-    const { error } = await supabase.from('messages').insert([row]);
-    if (error) throw error;
-    await saveUsernameToIp(clientIp, currentUsername);
-    loadMessages();
-  } catch (e) {
-    console.error('Send failed', e);
-    alert('Send failed');
-  }
-}
+      // Check if the username is one of the user's previous usernames
+      const prevUsernames = await loadUsernamesForIp(clientIp);
+      if (prevUsernames.includes(val)) {
+        // Switch to existing username
+        currentUsername = val;
+        localStorage.setItem('chatUsername', currentUsername);
+        currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+        flashNameMsg('Switched to ' + val);
+        loadMessages();
+        usernameEl.value = '';
+        return;
+      }
 
-// --- AUTO SCROLL ---
-autoScrollBtn.addEventListener('click', () => {
-  autoScroll = !autoScroll;
-  autoScrollBtn.textContent = 'Auto-Scroll: ' + (autoScroll ? 'On' : 'Off');
-});
+      // Check if the username is available (not used by anyone)
+      const isAvailable = await isUsernameAvailable(val);
+      if (!isAvailable) {
+        flashNameMsg('Username already taken');
+        return;
+      }
 
-// --- DELETE ALL ---
-deleteAllBtn.addEventListener('click', async () => {
-  if (!confirm('Delete all your messages?')) return;
-  try {
-    const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
-    if (error) throw error;
-    loadMessages();
-  } catch (e) { alert('Delete failed'); }
-});
+      // Save new username
+      currentUsername = val;
+      localStorage.setItem('chatUsername', currentUsername);
+      await saveUsernameToIp(clientIp, currentUsername);
+      currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+      flashNameMsg('Username saved');
+      loadMessages();
+      usernameEl.value = '';
+    });
 
-// --- USERNAME ---
-saveNameBtn.addEventListener('click', async () => {
-  const val = usernameEl.value.trim();
-  if (!val) {
-    flashNameMsg('Enter a username');
-    return;
-  }
-  if (val === currentUsername) {
-    flashNameMsg('Already using this username');
-    return;
-  }
+    // --- ENTER KEY ---
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+    usernameEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveNameBtn.click();
+    });
 
-  // Check if the username is one of the user's previous usernames
-  const prevUsernames = await loadUsernamesForIp(clientIp);
-  if (prevUsernames.includes(val)) {
-    // Switch to existing username
-    currentUsername = val;
-    localStorage.setItem('chatUsername', currentUsername);
-    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-    flashNameMsg('Switched to ' + val);
-    loadMessages();
-    usernameEl.value = '';
-    return;
-  }
+    // --- SEND BUTTON ---
+    sendBtn.addEventListener('click', sendMessage);
 
-  // Check if the username is available (not used by anyone)
-  const isAvailable = await isUsernameAvailable(val);
-  if (!isAvailable) {
-    flashNameMsg('Username already taken');
-    return;
-  }
+    // --- REALTIME SUBSCRIPTION ---
+    supabase.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        console.log('Real-time INSERT:', payload); // Debug log
+        const row = payload.new;
+        addMessageRow(row, false);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+        console.log('Real-time DELETE:', payload); // Debug log
+        const delId = payload.old.id;
+        const el = document.querySelector(`.message[data-id='${delId}']`);
+        if (el) el.remove();
+      })
+      .subscribe((status, err) => {
+        console.log('Subscription status:', status, err ? err.message : ''); // Debug log
+        if (status === 'SUBSCRIBED') {
+          statusEl.textContent = 'Online';
+          statusEl.className = 'online';
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          statusEl.textContent = 'Offline';
+          statusEl.className = 'offline';
+          console.warn('Realtime disconnected. Retrying...');
+          setTimeout(() => supabase.channel('public:messages').subscribe(), 1000);
+        }
+      });
 
-  // Save new username
-  currentUsername = val;
-  localStorage.setItem('chatUsername', currentUsername);
-  await saveUsernameToIp(clientIp, currentUsername);
-  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-  flashNameMsg('Username saved');
-  loadMessages();
-  usernameEl.value = '';
-});
-
-// --- ENTER KEY ---
-messageInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') sendMessage();
-});
-usernameEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') saveNameBtn.click();
-});
-
-// --- SEND BUTTON ---
-sendBtn.addEventListener('click', sendMessage);
-
-// --- REALTIME SUBSCRIPTION ---
-supabase.channel('public:messages')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-    const row = payload.new;
-    addMessageRow(row, false);
-  })
-  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-    const delId = payload.old.id;
-    const el = document.querySelector(`.message[data-id='${delId}']`);
-    if (el) el.remove();
-  })
-  .subscribe();
-
-// --- INITIAL LOAD ---
-async function init() {
-  clientIp = await getClientIp();
-  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-  loadMessages();
-}
-init();
-</script>
+    // --- INITIAL LOAD ---
+    async function init() {
+      clientIp = await getClientIp();
+      currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+      loadMessages();
+    }
+    init();
+  </script>
 </body>
 </html>
