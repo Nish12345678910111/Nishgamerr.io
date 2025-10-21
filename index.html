@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Modern Chat — IP ownership</title>
+<title>Modern Chat (Compact)</title>
+
+<!-- Supabase JS v2 -->
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+
 <style>
-  :root{--bg:#0b1220;--card:#071127;--muted:#94a3b8;--accent:#60a5fa;--btn:#2563eb;--ok:#16a34a;--err:#dc2626;--radius:8px}
+  /* Old compact GUI (kept exactly compact) */
+  :root { --bg:#0b1220; --card:#071127; --muted:#94a3b8; --accent:#60a5fa; --btn:#2563eb; --ok:#16a34a; --err:#dc2626; --radius:8px; }
   html,body{height:100%;margin:0;background:var(--bg);color:#e6eef8;font-family:Inter,system-ui,Arial,sans-serif}
   .wrap{max-width:720px;margin:18px auto;padding:12px}
-  h1{color:var(--accent);margin:0 0 10px;font-size:1.05rem;text-align:center}
+  h1{color:var(--accent);margin:0 0 8px;font-size:1.05rem;text-align:center}
   .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
   #currentUsername{color:var(--muted);font-size:0.92rem}
   #username{background:#0f1724;border:1px solid #1f2937;padding:6px 8px;border-radius:6px;color:inherit;width:46%}
@@ -31,6 +35,7 @@
   .offline{background:var(--err)}
   .pending{opacity:0.6;font-style:italic}
   #errorBox{color:#fecaca;min-height:1.1rem;margin-top:8px}
+  #nameMsg{color:#fb7185;min-height:1.1rem;margin-top:6px}
   @media (max-width:520px){#username{width:100%;} .top{flex-direction:column;align-items:flex-start} #chat{height:260px}}
 </style>
 </head>
@@ -45,7 +50,7 @@
         <span id="currentUsername">Username: Guest</span>
         <input id="username" placeholder="Enter username" />
         <button id="saveName">Save</button>
-        <div id="nameMsg" style="color:#fb7185;min-height:1.1rem;"></div>
+        <div id="nameMsg"></div>
       </div>
       <div style="color:var(--muted)">Dark • Realtime • IP ownership</div>
     </div>
@@ -68,40 +73,43 @@
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-/* ----------------- CONFIG — EDIT ONLY IF NEEDED ----------------- */
-const SUPABASE_URL = 'https://latrynkftllkwkesmohg.supabase.co'; // <- your project URL
-const SUPABASE_ANON_KEY = 'DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k'; // <- your anon key you provided
-/* ---------------------------------------------------------------- */
+/* -------------------- CONFIG -------------------- */
+/* Your Supabase project (already provided earlier) */
+const SUPABASE_URL = 'https://latrynkftllkwkesmohg.supabase.co';
+const SUPABASE_ANON_KEY = 'DBxC0tKd5axpldXK6CbKCR2rNqva-aerd_f985LTg0k';
+/* ------------------------------------------------ */
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
 
-/* DOM refs */
+/* DOM */
+const statusEl = document.getElementById('status');
 const chatEl = document.getElementById('chat');
 const usernameInput = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
+const nameMsg = document.getElementById('nameMsg');
 const currentUsernameSpan = document.getElementById('currentUsername');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const errorBox = document.getElementById('errorBox');
-const delAllBtn = document.getElementById('delAllBtn');
 const autoScrollBtn = document.getElementById('autoScrollBtn');
-const nameMsg = document.getElementById('nameMsg');
+const delAllBtn = document.getElementById('delAllBtn');
+const errorBox = document.getElementById('errorBox');
 
+/* State */
 let currentUsername = localStorage.getItem('chatUsername') || '';
-let pendingKey = 'chat_pending_v1';
-let pendingMessages = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+let PENDING_KEY = 'chat_pending_v2';
+let pendingMessages = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
 let autoScroll = true;
-let deviceId = localStorage.getItem('chat_device_id') || crypto.randomUUID(); if(!localStorage.getItem('chat_device_id')) localStorage.setItem('chat_device_id', deviceId);
+let deviceId = localStorage.getItem('chat_device_id') || crypto.randomUUID();
+if(!localStorage.getItem('chat_device_id')) localStorage.setItem('chat_device_id', deviceId);
 let clientIP = localStorage.getItem('chat_client_ip') || null;
 
-/* helpers */
+/* Helpers */
 const esc = s => String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 const fmt = ts => { try{ return new Date(ts).toLocaleString(); } catch { return '??:??'; } };
 function showError(msg){ errorBox.textContent = msg; setTimeout(()=>{ if(errorBox.textContent===msg) errorBox.textContent=''; },4000); }
 function flashName(txt){ nameMsg.textContent = txt; setTimeout(()=> nameMsg.textContent='',2200); }
 
-/* Get public IP (best-effort) and cache it */
+/* Fetch client IP once (cache) */
 async function fetchClientIP(){
   if(clientIP) return clientIP;
   try {
@@ -113,28 +121,21 @@ async function fetchClientIP(){
   } catch(e){ return null; }
 }
 
-/* Connectivity check: probe Supabase REST + listen to realtime events */
+/* Connectivity probe to Supabase REST (sends apikey header) */
 async function checkConnectivity(){
-  // quick REST probe to supabase
   try{
     const url = `${SUPABASE_URL}/rest/v1/messages?select=id&limit=1`;
-    const res = await fetch(url, {
-      method:'GET',
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-      cache: 'no-store'
-    });
-    if(!res.ok) throw new Error('REST probe failed');
-    statusEl.textContent = 'Online';
-    statusEl.className = 'online';
+    const res = await fetch(url, { method:'GET', headers:{ apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, cache:'no-store' });
+    if(!res.ok) throw new Error('REST probe failed: ' + res.status);
+    statusEl.textContent = 'Online'; statusEl.className = 'online';
     return true;
   } catch(e){
-    statusEl.textContent = 'Offline';
-    statusEl.className = 'offline';
+    statusEl.textContent = 'Offline'; statusEl.className = 'offline';
     return false;
   }
 }
 
-/* Display row with small 26×26 delete button when row.ip_address === clientIP or device matches */
+/* Display a message row (avoid duplicates) */
 function displayRow(row, { pending=false, pendingLocal=false } = {}){
   if(row.id && chatEl.querySelector(`[data-id="${row.id}"]`)) return;
   if(pending && row._pending_key && chatEl.querySelector(`[data-pending="${row._pending_key}"]`)) return;
@@ -144,13 +145,13 @@ function displayRow(row, { pending=false, pendingLocal=false } = {}){
   if(row.id) wrapper.dataset.id = row.id;
   if(pending && row._pending_key) wrapper.dataset.pending = row._pending_key;
 
-  const left = document.createElement('div'); left.className='msgLeft';
+  const left = document.createElement('div'); left.className = 'msgLeft';
   left.innerHTML = `<span class="username">${esc(row.username)}</span>
                     <div class="text">${esc(row.message)}</div>
                     <div class="meta">${fmt(row.created_at)}${row.ip_address ? ' • ' + esc(row.ip_address) : ''}</div>`;
   wrapper.appendChild(left);
 
-  const ownedByThis = (row.ip_address && clientIP && row.ip_address === clientIP) || (row.device_id && row.device_id === deviceId) || pendingLocal === true;
+  const ownedByThis = (row.ip_address && clientIP && row.ip_address === clientIP) || (row.device_id && row.device_id === deviceId) || pendingLocal === true || (currentUsername && row.username === currentUsername && pendingLocal===true);
 
   if(ownedByThis){
     const delBtn = document.createElement('button');
@@ -159,16 +160,16 @@ function displayRow(row, { pending=false, pendingLocal=false } = {}){
     delBtn.title = 'Delete';
     delBtn.onclick = async (e) => {
       e.stopPropagation();
-      // if pending local, remove locally
+      // if local pending -> remove locally
       if(pendingLocal || (pending && !row.id)){
         pendingMessages = pendingMessages.filter(pm => pm._pending_key !== row._pending_key);
-        localStorage.setItem(pendingKey, JSON.stringify(pendingMessages));
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
         wrapper.remove();
         return;
       }
       if(!row.id){ showError('Cannot delete: missing id'); return; }
-      try {
-        // Send REST DELETE with x-ip and x-device headers so RLS allows deletion only when IP or device matches
+      try{
+        // DELETE via REST with x-ip and x-device headers so RLS permits deletion only to owner
         const url = `${SUPABASE_URL}/rest/v1/messages?id=eq.${row.id}`;
         const res = await fetch(url, {
           method: 'DELETE',
@@ -180,13 +181,17 @@ function displayRow(row, { pending=false, pendingLocal=false } = {}){
             'x-device': deviceId
           }
         });
-        if(!res.ok){ const txt = await res.text(); console.error('delete failed', res.status, txt); showError('Delete failed'); return; }
+        if(!res.ok){
+          const txt = await res.text();
+          console.error('delete failed', res.status, txt);
+          showError('Delete failed');
+          return;
+        }
         wrapper.remove();
-      } catch(err){ console.error('delete error', err); showError('Delete failed'); }
+      } catch(err){ console.error(err); showError('Delete failed'); }
     };
     wrapper.appendChild(delBtn);
   } else {
-    // small spacer so layout consistent
     const spacer = document.createElement('div'); spacer.style.width = '30px'; wrapper.appendChild(spacer);
   }
 
@@ -194,81 +199,76 @@ function displayRow(row, { pending=false, pendingLocal=false } = {}){
   if(autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* Load messages (reconcile pending) */
+/* Load messages and show pending */
 async function loadMessages(){
   const ok = await checkConnectivity();
   if(!ok){
     chatEl.innerHTML = '';
-    pendingMessages.forEach(pm => displayRow(pm, { pending:true, pendingLocal:true }));
+    pendingMessages.forEach(p => displayRow(p, { pending:true, pendingLocal:true }));
     return;
   }
-  try {
-    const { data, error } = await supabase.from('messages').select('id, username, message, ip_address, device_id, created_at').order('created_at', { ascending: true });
+  try{
+    const { data, error } = await supabase.from('messages').select('id, username, message, device_id, ip_address, created_at').order('created_at', { ascending:true });
     if(error){ console.error('load error', error); showError('Failed to load messages'); return; }
     chatEl.innerHTML = '';
     data.forEach(r => displayRow(r));
-    // reconcile pending: remove pending that are now in DB (match by username+message+timestamp proximity)
+    // reconcile pending: drop those that are now in DB
     const keep = [];
     for(const p of pendingMessages){
       const found = data.find(d => d.username === p.username && d.message === p.message && Math.abs(new Date(d.created_at) - new Date(p.created_at)) < 3000);
       if(!found) keep.push(p);
     }
     pendingMessages = keep;
-    localStorage.setItem(pendingKey, JSON.stringify(pendingMessages));
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
     pendingMessages.forEach(pm => displayRow(pm, { pending:true, pendingLocal:true }));
-  } catch(e) { console.error(e); showError('Load failed'); }
+  } catch(e){ console.error(e); showError('Load failed'); }
 }
 
-/* Send message optimistic, stores ip and device_id */
+/* Send message (optimistic) */
 async function sendMessage(){
   const txt = messageInput.value.trim();
   if(!txt) return;
-  if(!currentUsername){ flashName('Set username'); return; }
+  if(!currentUsername){ flashName('Set username first'); return; }
 
-  // ensure we have clientIP
-  await fetchClientIP();
+  await fetchClientIP(); // ensure IP available
 
   const created_at = new Date().toISOString();
   const _pending_key = crypto.randomUUID();
   const pendingRow = { username: currentUsername, message: txt, device_id: deviceId, ip_address: clientIP, created_at, _pending_key };
 
-  // optimistic UI + queue
+  // optimistic UI and queue
   pendingMessages.push(pendingRow);
-  localStorage.setItem(pendingKey, JSON.stringify(pendingMessages));
+  localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
   displayRow(pendingRow, { pending:true, pendingLocal:true });
   messageInput.value = '';
 
-  // attempt immediate send if online
+  // try to send now
   const ok = await checkConnectivity();
   if(!ok) return;
 
-  try {
-    const { data, error } = await supabase.from('messages').insert([{
-      username: pendingRow.username, message: pendingRow.message, device_id: pendingRow.device_id, ip_address: pendingRow.ip_address, created_at: pendingRow.created_at
-    }]).select();
+  try{
+    const { data, error } = await supabase.from('messages').insert([{ username: pendingRow.username, message: pendingRow.message, device_id: pendingRow.device_id, ip_address: pendingRow.ip_address, created_at: pendingRow.created_at }]).select();
     if(error || !data || !data[0]){ console.error('insert err', error); showError('Send failed; queued'); return; }
     // remove pending locally
     pendingMessages = pendingMessages.filter(pm => pm._pending_key !== _pending_key);
-    localStorage.setItem(pendingKey, JSON.stringify(pendingMessages));
-    // remove pending DOM node(s)
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
+    // remove pending DOM nodes
     const nodes = Array.from(chatEl.querySelectorAll(`[data-pending="${_pending_key}"]`)); nodes.forEach(n => n.remove());
-    // display official DB row (realtime will also show it)
+    // display real DB row (realtime will also pick it up)
     displayRow(data[0]);
   } catch(e){ console.error('send exception', e); showError('Send exception; queued'); }
 }
 
-/* resend pending messages when back online */
+/* Resend pending queue when online */
 async function resendPending(){
   const ok = await checkConnectivity(); if(!ok) return;
   const copy = [...pendingMessages];
   for(const p of copy){
     try{
-      const { data, error } = await supabase.from('messages').insert([{
-        username: p.username, message: p.message, device_id: p.device_id, ip_address: p.ip_address, created_at: p.created_at
-      }]).select();
+      const { data, error } = await supabase.from('messages').insert([{ username: p.username, message: p.message, device_id: p.device_id, ip_address: p.ip_address, created_at: p.created_at }]).select();
       if(!error && data && data[0]){
         pendingMessages = pendingMessages.filter(pm => pm._pending_key !== p._pending_key);
-        localStorage.setItem(pendingKey, JSON.stringify(pendingMessages));
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
         const nodes = Array.from(chatEl.querySelectorAll(`[data-pending="${p._pending_key}"]`)); nodes.forEach(n => n.remove());
         displayRow(data[0]);
       }
@@ -276,15 +276,15 @@ async function resendPending(){
   }
 }
 
-/* Delete all mine (two confirms) - uses REST delete with x-ip and x-device */
+/* Delete all mine (two confirms) */
 async function deleteAllMine(){
-  if(!currentUsername){ flashName('Set username'); return; }
-  if(!confirm('Delete ALL your messages (by IP/device)?')) return;
+  if(!currentUsername){ flashName('Set username first'); return; }
+  if(!confirm('Delete ALL messages posted by this username from server?')) return;
   if(!confirm('Confirm again: permanently delete ALL your messages.')) return;
-  try {
+  try{
     const url = `${SUPABASE_URL}/rest/v1/messages?username=eq.${encodeURIComponent(currentUsername)}`;
     const res = await fetch(url, {
-      method: 'DELETE',
+      method:'DELETE',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -298,14 +298,15 @@ async function deleteAllMine(){
   } catch(e){ console.error('deleteAll ex', e); showError('Delete all failed'); }
 }
 
-/* Realtime subscription */
+/* Realtime subscribe */
 async function subscribeRealtime(){
-  try {
+  try{
     supabase.removeAllChannels();
     await supabase.channel('realtime-messages')
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
+        // avoid dup if already visible
         displayRow(payload.new);
-        // notify if tab hidden and new message not from our IP/device
+        // notification when hidden and not our own message
         if(Notification.permission === 'granted' && document.hidden){
           const newRow = payload.new;
           if(!(newRow.ip_address && clientIP && newRow.ip_address === clientIP) && !(newRow.device_id && newRow.device_id === deviceId)){
@@ -322,10 +323,10 @@ async function subscribeRealtime(){
         if(id){ const el = chatEl.querySelector(`[data-id="${id}"]`); if(el) el.remove(); }
       })
       .subscribe();
-  } catch(e){ console.warn('subscribe failed', e); }
+  } catch(e){ console.warn('subscribe failed', e); showError('Realtime subscribe failed'); }
 }
 
-/* small SW blob for notifications while tab is backgrounded */
+/* Service worker blob for notifications while backgrounded */
 const swCode = `
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => self.clients.claim());
@@ -336,41 +337,55 @@ self.addEventListener('message', e => {
 });
 self.addEventListener('notificationclick', e => { e.notification.close(); e.waitUntil(clients.matchAll({ type:'window' }).then(list => { for(const w of list) if(w.visibilityState==='visible') return w.focus(); return clients.openWindow('/'); })); });
 `;
-async function registerBlobSW(){ if('serviceWorker' in navigator){ try{ const blob=new Blob([swCode], { type:'application/javascript' }); const url=URL.createObjectURL(blob); await navigator.serviceWorker.register(url); }catch(e){ console.warn('sw failed', e); } } }
+async function registerBlobSW(){ if('serviceWorker' in navigator){ try{ const blob = new Blob([swCode], { type:'application/javascript' }); const url = URL.createObjectURL(blob); await navigator.serviceWorker.register(url); }catch(e){ console.warn('sw failed', e); } } }
 async function ensureNotifPerm(){ if('Notification' in window && Notification.permission !== 'granted') try{ await Notification.requestPermission(); }catch{} }
 
-/* UI wiring */
+/* Username save & check */
 saveNameBtn.addEventListener('click', async () => {
   const nm = usernameInput.value.trim();
   if(!nm){ flashName('Enter username'); return; }
-  // check DB: if name exists and is not ours, show message (best-effort)
-  try {
+  // check if username exists in user_ips (best-effort)
+  try{
     const { data } = await supabase.from('user_ips').select('id').eq('username', nm).limit(1);
-    if(data && data.length > 0 && nm !== currentUsername){
-      flashName('Username already used');
-      return;
-    }
+    if(data && data.length > 0 && nm !== currentUsername){ flashName('Username already used'); return; }
   } catch(e){ /* ignore */ }
-
   currentUsername = nm;
   localStorage.setItem('chatUsername', currentUsername);
   currentUsernameSpan.textContent = 'Username: ' + currentUsername;
   flashName('Saved');
 
-  // log username -> ip (best-effort)
-  try {
+  // log username -> ip & device
+  try{
     await fetchClientIP();
     await supabase.from('user_ips').insert([{ username: currentUsername, device_id: deviceId, ip_address: clientIP }]);
   } catch(e){ /* ignore */ }
 });
 
+/* UI wiring */
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
-delAllBtn.addEventListener('click', deleteAllMine);
 autoScrollBtn.addEventListener('click', () => { autoScroll = !autoScroll; autoScrollBtn.textContent = 'Auto-scroll: ' + (autoScroll ? 'ON' : 'OFF'); });
-
+delAllBtn.addEventListener('click', deleteAllMine);
 window.addEventListener('online', async () => { await checkConnectivity(); await resendPending(); await loadMessages(); });
 window.addEventListener('offline', () => { statusEl.textContent = 'Offline'; statusEl.className = 'offline'; });
+
+/* resend pending wrapper */
+async function resendPending(){ await resendPendingImpl(); }
+async function resendPendingImpl(){
+  const ok = await checkConnectivity(); if(!ok) return;
+  const copy = [...pendingMessages];
+  for(const p of copy){
+    try{
+      const { data, error } = await supabase.from('messages').insert([{ username: p.username, message: p.message, device_id: p.device_id, ip_address: p.ip_address, created_at: p.created_at }]).select();
+      if(!error && data && data[0]){
+        pendingMessages = pendingMessages.filter(pm => pm._pending_key !== p._pending_key);
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingMessages));
+        const nodes = Array.from(chatEl.querySelectorAll(`[data-pending="${p._pending_key}"]`)); nodes.forEach(n => n.remove());
+        displayRow(data[0]);
+      }
+    } catch(e){ console.warn('resend failed', e); }
+  }
+}
 
 /* Init */
 (async function init(){
@@ -381,7 +396,8 @@ window.addEventListener('offline', () => { statusEl.textContent = 'Offline'; sta
   await checkConnectivity();
   await loadMessages();
   await subscribeRealtime();
-  setInterval(resendPending, 8000);
+  setInterval(checkConnectivity, 8000);
+  setInterval(resendPendingImpl, 8000);
 })();
 </script>
 </body>
