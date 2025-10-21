@@ -133,11 +133,11 @@
       } catch (e) {
         statusEl.textContent = 'Offline';
         statusEl.className = 'offline';
+        console.error('Connectivity check failed:', e.message);
       }
     }
     window.addEventListener('online', checkConnectivity);
     window.addEventListener('offline', checkConnectivity);
-    checkConnectivity();
 
     // --- HELPERS ---
     function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
@@ -147,9 +147,12 @@
     // --- DISPLAY MESSAGE ---
     function addMessageRow(row, pending = false) {
       console.log('Adding message:', row);
+      const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
+      if (existing) return existing; // Skip duplicates
       const div = document.createElement('div');
       div.className = 'message' + (pending ? ' pending' : '');
-      div.dataset.id = row.id;
+      if (row.tempId) div.dataset.tempId = row.tempId;
+      if (row.id) div.dataset.id = row.id;
       const delBtn = row.username === currentUsername ? ` <button class="delete-btn">X</button>` : '';
       div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
       <span class="text">${escapeHtml(row.message)}</span> 
@@ -163,10 +166,10 @@
             const { error } = await supabase.from('messages').delete().eq('id', row.id).eq('username', currentUsername);
             if (error) throw error;
             div.remove();
-          } catch (e) { alert('Delete failed'); }
+          } catch (e) { alert('Delete failed'); console.error('Delete error:', e.message); }
         });
       }
-      return div; // Return the DOM element for updating
+      return div;
     }
 
     // --- LOAD MESSAGES ---
@@ -176,28 +179,34 @@
         if (error) throw error;
         chatEl.innerHTML = '';
         data.forEach(r => addMessageRow(r, false));
-      } catch (e) { console.error('Load messages error:', e); }
+      } catch (e) { console.error('Load messages error:', e.message); }
     }
 
     // --- SEND MESSAGE ---
     async function sendMessage() {
       const txt = messageInput.value.trim();
       if (!txt) return;
-      const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-      const messageDiv = addMessageRow(row, true); // Add as pending
+      const tempId = Date.now().toString(); // Unique temp ID
+      const row = { username: currentUsername, message: txt, created_at: new Date().toISOString(), tempId };
+      const messageDiv = addMessageRow(row, true);
       messageInput.value = '';
       try {
-        const { data, error } = await supabase.from('messages').insert([row]).select().single();
+        const { data, error } = await supabase.from('messages').insert([{
+          username: currentUsername,
+          message: txt,
+          created_at: row.created_at
+        }]).select().single();
         if (error) throw error;
-        // Update the pending message to confirmed
+        // Update pending message
         messageDiv.className = 'message';
         messageDiv.dataset.id = data.id;
+        delete messageDiv.dataset.tempId;
         await saveUsernameToIp(clientIp, currentUsername);
         console.log('Message confirmed:', data);
       } catch (e) {
-        console.error('Send failed:', e);
+        console.error('Send failed:', e.message);
         alert('Send failed');
-        messageDiv.remove(); // Remove failed message
+        messageDiv.remove();
       }
     }
 
@@ -214,7 +223,7 @@
         const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
         if (error) throw error;
         loadMessages();
-      } catch (e) { alert('Delete failed'); }
+      } catch (e) { alert('Delete failed'); console.error('Delete all error:', e.message); }
     });
 
     // --- USERNAME ---
@@ -264,38 +273,44 @@
     sendBtn.addEventListener('click', sendMessage);
 
     // --- REALTIME SUBSCRIPTION ---
-    supabase.channel('public:messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        console.log('Real-time INSERT:', payload);
-        const row = payload.new;
-        // Avoid duplicating own message
-        if (row.username !== currentUsername || !document.querySelector(`.message[data-id='${row.id}']`)) {
-          addMessageRow(row, false);
-        }
+    let channel = null;
+    function subscribeToRealtime() {
+      if (channel) supabase.removeChannel(channel);
+      channel = supabase.channel('public:messages', {
+        config: { broadcast: { ack: true } }
       })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-        console.log('Real-time DELETE:', payload);
-        const delId = payload.old.id;
-        const el = document.querySelector(`.message[data-id='${delId}']`);
-        if (el) el.remove();
-      })
-      .subscribe((status, err) => {
-        console.log('Subscription status:', status, err ? err.message : '');
-        if (status === 'SUBSCRIBED') {
-          statusEl.textContent = 'Online';
-          statusEl.className = 'online';
-          console.log('Real-time connected successfully');
-        } else if (status === 'CLOSED' || status == 'CHANNEL_ERROR') {
-          statusEl.textContent = 'Offline';
-          statusEl.className = 'offline';
-          console.warn('Realtime disconnected. Retrying...');
-          setTimeout(() => supabase.channel('public:messages').subscribe(), 1000);
-        } else if (err) {
-          console.error('Subscription error:', err.message);
-          statusEl.textContent = 'Offline';
-          statusEl.className = 'offline';
-        }
-      });
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+          console.log('Real-time INSERT:', payload);
+          const row = payload.new;
+          if (row.username !== currentUsername || !document.querySelector(`.message[data-id='${row.id}']`)) {
+            addMessageRow(row, false);
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+          console.log('Real-time DELETE:', payload);
+          const delId = payload.old.id;
+          const el = document.querySelector(`.message[data-id='${delId}']`);
+          if (el) el.remove();
+        })
+        .subscribe((status, err) => {
+          console.log('Subscription status:', status, err ? err.message : '');
+          if (status === 'SUBSCRIBED') {
+            statusEl.textContent = 'Online';
+            statusEl.className = 'online';
+            console.log('Real-time connected successfully');
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            statusEl.textContent = 'Offline';
+            statusEl.className = 'offline';
+            console.warn('Realtime disconnected. Retrying in 1s...');
+            setTimeout(subscribeToRealtime, 1000);
+          } else if (err) {
+            console.error('Subscription error:', err.message);
+            statusEl.textContent = 'Offline';
+            statusEl.className = 'offline';
+          }
+        });
+    }
+    subscribeToRealtime();
 
     // --- FALLBACK POLLING ---
     let isRealtimeActive = false;
@@ -315,6 +330,7 @@
     async function init() {
       clientIp = await getClientIp();
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+      checkConnectivity();
       loadMessages();
     }
     init();
