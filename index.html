@@ -96,6 +96,16 @@
     let isOnline = false;
     let statusTimeout = null;
     let clientIp = null;
+    let refreshTimeout = null;
+
+    // --- DEBOUNCE REFRESH ---
+    function debounceRefresh() {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        console.log('Debounced refresh triggered');
+        loadMessages();
+      }, 1000);
+    }
 
     // --- FETCH CLIENT IP ---
     async function fetchClientIp() {
@@ -252,6 +262,7 @@
             if (error) throw error;
             console.log(`Deleted message ID: ${messageId}`);
             div.remove();
+            debounceRefresh(); // Trigger 1-second refresh
           } catch (e) {
             console.error('Delete error:', e.message);
             alert('Delete failed: ' + e.message);
@@ -273,12 +284,9 @@
           .order('created_at', { ascending: true })
           .limit(50);
         if (error) throw error;
-        const existingIds = new Set(Array.from(chatEl.querySelectorAll('.message')).map(el => el.dataset.id).filter(id => id));
-        data.forEach(r => {
-          if (!existingIds.has(r.id.toString())) {
-            addMessageRow(r, false);
-          }
-        });
+        chatEl.innerHTML = ''; // Clear chatbox
+        data.forEach(r => addMessageRow(r, false));
+        if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
       } catch (e) {
         console.error('Load messages error:', e.message);
         alert('Failed to load messages: ' + e.message);
@@ -319,7 +327,8 @@
         const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
         if (error) throw error;
         console.log('Deleted all messages for:', currentUsername);
-        loadMessages();
+        chatEl.innerHTML = ''; // Clear chatbox
+        debounceRefresh(); // Trigger 1-second refresh
       } catch (e) {
         console.error('Delete all error:', e.message);
         alert('Delete all failed: ' + e.message);
@@ -393,6 +402,16 @@
             setTimeout(() => existing.classList.remove('new'), 1000);
           }
         })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+          console.log('Real-time DELETE:', payload);
+          const deletedId = payload.old.id;
+          const messageDiv = document.querySelector(`.message[data-id='${deletedId}']`);
+          if (messageDiv) {
+            messageDiv.remove();
+            console.log(`Removed message ID: ${deletedId} from chatbox`);
+          }
+          debounceRefresh(); // Trigger 1-second refresh as fallback
+        })
         .subscribe((status, err) => {
           console.log('Subscription status:', status, err ? err.message : '');
           if (status === 'SUBSCRIBED') {
@@ -408,6 +427,7 @@
             console.error('Subscription error:', err.message);
             updateStatus('Offline', 'offline');
             isOnline = false;
+            debounceRefresh(); // Refresh on error
           }
         });
     }
