@@ -15,15 +15,17 @@
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
     #chat { background:#071127; border-radius:8px; padding:12px; height:285px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
-    .message { margin-bottom:10px; transition: background 0.3s;}
+    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center;}
     .message.new { background: #1e3a8a; }
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
+    .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; opacity:0.5; cursor:not-allowed;}
     #controls { display:flex; gap:8px; margin-top:4px;}
     #messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937;}
     button { border:none; border-radius:6px; cursor:pointer; }
     #sendBtn { background:#2563eb; color:white; padding:10px 14px;}
     #autoScrollBtn { background:#facc15; color:#1f2937; padding:8px 12px; font-size:0.85rem;}
+    #deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem; opacity:0.5; cursor:not-allowed;}
     .pending { opacity:0.6; font-style:italic;}
     #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700;}
     .online { background:#16a34a; color:#052e0b; }
@@ -41,6 +43,7 @@
         <input id="username" placeholder="Enter username">
         <button id="saveName">Save</button>
         <button id="autoScrollBtn">Auto-Scroll: On</button>
+        <button id="deleteAllBtn" disabled>Delete All My Messages</button>
         <div id="nameMsg"></div>
       </div>
       <div style="color:#94a3b8">Old GUI • Realtime</div>
@@ -186,9 +189,10 @@
       div.className = `message${pending ? ' pending' : ' new'}`;
       if (row.tempId) div.dataset.tempId = row.tempId;
       if (row.id) div.dataset.id = row.id;
+      const delBtn = row.username === currentUsername ? ` <button class="delete-btn" data-id="${row.id || ''}" disabled>X</button>` : '';
       div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
       <span class="text">${escapeHtml(row.message)}</span> 
-      <span class="ts">[${fmtTime(row.created_at)}]</span>`;
+      <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
       chatEl.appendChild(div);
       if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
       if (!pending) {
@@ -349,4 +353,4 @@
     init();
   </script>
 </body>
-  </html>
+</html>
