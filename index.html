@@ -77,6 +77,7 @@
     let autoScroll = true;
     let clientIp = null;
     let isOnline = false;
+    let statusTimeout = null;
 
     // --- FETCH CLIENT IP ---
     async function getClientIp() {
@@ -126,11 +127,14 @@
 
     // --- UPDATE STATUS ---
     function updateStatus(status, className) {
-      if (statusEl.textContent !== status) {
-        statusEl.textContent = status;
-        statusEl.className = className;
-        console.log(`Status updated: ${status}`);
-      }
+      if (statusTimeout) clearTimeout(statusTimeout);
+      statusTimeout = setTimeout(() => {
+        if (statusEl.textContent !== status) {
+          statusEl.textContent = status;
+          statusEl.className = className;
+          console.log(`Status updated: ${status}`);
+        }
+      }, 500); // Debounce to prevent rapid flips
     }
 
     // --- CHECK CONNECTIVITY ---
@@ -148,11 +152,6 @@
         console.error('Connectivity check failed:', e.message);
       }
     }
-    window.addEventListener('online', checkConnectivity);
-    window.addEventListener('offline', () => {
-      updateStatus('Offline', 'offline');
-      isOnline = false;
-    });
 
     // --- HELPERS ---
     function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
@@ -289,7 +288,10 @@
     // --- REALTIME SUBSCRIPTION ---
     let channel = null;
     function subscribeToRealtime() {
-      if (channel) supabase.removeChannel(channel);
+      if (channel) {
+        console.log('Removing existing channel');
+        supabase.removeChannel(channel);
+      }
       channel = supabase.channel('public:messages', {
         config: { broadcast: { ack: true } }
       })
@@ -315,8 +317,8 @@
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             updateStatus('Offline', 'offline');
             isOnline = false;
-            console.warn('Realtime disconnected. Retrying in 1s...');
-            setTimeout(subscribeToRealtime, 1000);
+            console.warn('Realtime disconnected. Retrying in 2s...');
+            setTimeout(subscribeToRealtime, 2000);
           } else if (err) {
             console.error('Subscription error:', err.message);
             updateStatus('Offline', 'offline');
@@ -341,9 +343,8 @@
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
       checkConnectivity();
       loadMessages();
-      subscribeToRealtime();
     }
     init();
   </script>
 </body>
-</html>
+  </html>
