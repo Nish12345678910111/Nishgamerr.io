@@ -12,6 +12,7 @@ h1 { text-align:center; color:#60a5fa; margin-bottom:10px;}
 .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
 #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
 #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
+#prevUsernames { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%; margin-top:4px;}
 #chat { background:#071127; border-radius:8px; padding:12px; height:420px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
 .message { margin-bottom:10px;}
 .username { color:#60a5fa; font-weight:700; margin-right:8px;}
@@ -38,6 +39,9 @@ button { border:none; border-radius:6px; cursor:pointer; }
       <span id="currentUsername">Username: Guest</span><br>
       <input id="username" placeholder="Enter username">
       <button id="saveName">Save</button>
+      <select id="prevUsernames" style="display:none;">
+        <option value="">Select Previous Username</option>
+      </select>
       <button id="autoScrollBtn">Auto-Scroll: On</button>
       <button id="deleteAllBtn">Delete All My Messages</button>
       <div id="nameMsg"></div>
@@ -64,6 +68,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const chatEl = document.getElementById('chat');
 const usernameEl = document.getElementById('username');
 const saveNameBtn = document.getElementById('saveName');
+const prevUsernamesEl = document.getElementById('prevUsernames');
 const currentUsernameLabel = document.getElementById('currentUsername');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -74,6 +79,66 @@ const nameMsgEl = document.getElementById('nameMsg');
 
 let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
 let autoScroll = true;
+
+// --- INDEXEDDB SETUP ---
+const dbName = 'ChatApp';
+const storeName = 'usernames';
+
+async function initIndexedDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      db.createObjectStore(storeName, { keyPath: 'username' });
+    };
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+    request.onerror = (event) => {
+      reject(event.target.error);
+    };
+  });
+}
+
+async function saveUsernameToDB(username) {
+  const db = await initIndexedDB();
+  const tx = db.transaction(storeName, 'readwrite');
+  const store = tx.objectStore(storeName);
+  store.put({ username });
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadUsernamesFromDB() {
+  const db = await initIndexedDB();
+  const tx = db.transaction(storeName, 'readonly');
+  const store = tx.objectStore(storeName);
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result.map(item => item.username));
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function populatePrevUsernames() {
+  try {
+    const usernames = await loadUsernamesFromDB();
+    prevUsernamesEl.innerHTML = '<option value="">Select Previous Username</option>';
+    usernames.forEach(username => {
+      if (username !== currentUsername) {
+        const option = document.createElement('option');
+        option.value = username;
+        option.textContent = username;
+        prevUsernamesEl.appendChild(option);
+      }
+    });
+    prevUsernamesEl.style.display = usernames.length > 0 ? 'block' : 'none';
+  } catch (e) {
+    console.error('Failed to load usernames:', e);
+  }
+}
 
 // --- NETWORK STATUS ---
 async function checkConnectivity() {
@@ -95,6 +160,18 @@ checkConnectivity();
 function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
 function fmtTime(ts) { const d = new Date(ts); return isNaN(d) ? '??:??' : d.toLocaleString(); }
 function flashNameMsg(txt) { nameMsgEl.textContent = txt; setTimeout(() => nameMsgEl.textContent = '', 2000); }
+
+// --- CHECK USERNAME AVAILABILITY ---
+async function isUsernameAvailable(username) {
+  try {
+    const { data, error } = await supabase.from('messages').select('username').eq('username', username).limit(1);
+    if (error) throw error;
+    return data.length === 0;
+  } catch (e) {
+    console.error('Error checking username:', e);
+    return false;
+  }
+}
 
 // --- DISPLAY MESSAGE ---
 function addMessageRow(row, pending = false) {
@@ -164,14 +241,42 @@ deleteAllBtn.addEventListener('click', async () => {
 });
 
 // --- USERNAME ---
-saveNameBtn.addEventListener('click', () => {
+saveNameBtn.addEventListener('click', async () => {
   const val = usernameEl.value.trim();
-  if (!val) { flashNameMsg('Enter a username'); return; }
+  if (!val) {
+    flashNameMsg('Enter a username');
+    return;
+  }
+  if (val === currentUsername) {
+    flashNameMsg('Username already in use');
+    return;
+  }
+  const isAvailable = await isUsernameAvailable(val);
+  if (!isAvailable) {
+    flashNameMsg('Username already taken');
+    return;
+  }
   currentUsername = val;
   localStorage.setItem('chatUsername', currentUsername);
+  await saveUsernameToDB(currentUsername);
   currentUsernameLabel.textContent = 'Username: ' + currentUsername;
   flashNameMsg('Username saved');
   loadMessages();
+  populatePrevUsernames();
+});
+
+// --- SWITCH TO PREVIOUS USERNAME ---
+prevUsernamesEl.addEventListener('change', async (e) => {
+  const selectedUsername = e.target.value;
+  if (selectedUsername) {
+    currentUsername = selectedUsername;
+    localStorage.setItem('chatUsername', currentUsername);
+    currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+    flashNameMsg('Switched to ' + selectedUsername);
+    loadMessages();
+    populatePrevUsernames();
+    e.target.value = '';
+  }
 });
 
 // --- ENTER KEY ---
@@ -201,6 +306,7 @@ supabase.channel('public:messages')
 // --- INITIAL LOAD ---
 currentUsernameLabel.textContent = 'Username: ' + currentUsername;
 loadMessages();
+populatePrevUsernames();
 </script>
 </body>
 </html>
