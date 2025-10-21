@@ -12,7 +12,7 @@
     .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
-    #chat { background:#071127; border-radius:8px; padding:12px; height:200px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
+    #chat { background:#071127; border-radius:8px; padding:12px; height:289px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
     .message { margin-bottom:10px;}
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
@@ -76,6 +76,7 @@
     let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
     let autoScroll = true;
     let clientIp = null;
+    let isOnline = false;
 
     // --- FETCH CLIENT IP ---
     async function getClientIp() {
@@ -123,21 +124,35 @@
       }
     }
 
-    // --- NETWORK STATUS ---
+    // --- UPDATE STATUS ---
+    function updateStatus(status, className) {
+      if (statusEl.textContent !== status) {
+        statusEl.textContent = status;
+        statusEl.className = className;
+        console.log(`Status updated: ${status}`);
+      }
+    }
+
+    // --- CHECK CONNECTIVITY ---
     async function checkConnectivity() {
       try {
-        const { data, error } = await supabase.from('messages').select('id').limit(1);
+        const { error } = await supabase.from('messages').select('id').limit(1);
         if (error) throw error;
-        statusEl.textContent = 'Online';
-        statusEl.className = 'online';
+        if (!isOnline) {
+          updateStatus('Online', 'online');
+          isOnline = true;
+        }
       } catch (e) {
-        statusEl.textContent = 'Offline';
-        statusEl.className = 'offline';
+        updateStatus('Offline', 'offline');
+        isOnline = false;
         console.error('Connectivity check failed:', e.message);
       }
     }
     window.addEventListener('online', checkConnectivity);
-    window.addEventListener('offline', checkConnectivity);
+    window.addEventListener('offline', () => {
+      updateStatus('Offline', 'offline');
+      isOnline = false;
+    });
 
     // --- HELPERS ---
     function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
@@ -148,7 +163,7 @@
     function addMessageRow(row, pending = false) {
       console.log('Adding message:', row);
       const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
-      if (existing) return existing; // Skip duplicates
+      if (existing) return existing;
       const div = document.createElement('div');
       div.className = 'message' + (pending ? ' pending' : '');
       if (row.tempId) div.dataset.tempId = row.tempId;
@@ -186,7 +201,7 @@
     async function sendMessage() {
       const txt = messageInput.value.trim();
       if (!txt) return;
-      const tempId = Date.now().toString(); // Unique temp ID
+      const tempId = Date.now().toString();
       const row = { username: currentUsername, message: txt, created_at: new Date().toISOString(), tempId };
       const messageDiv = addMessageRow(row, true);
       messageInput.value = '';
@@ -197,7 +212,6 @@
           created_at: row.created_at
         }]).select().single();
         if (error) throw error;
-        // Update pending message
         messageDiv.className = 'message';
         messageDiv.dataset.id = data.id;
         delete messageDiv.dataset.tempId;
@@ -295,34 +309,29 @@
         .subscribe((status, err) => {
           console.log('Subscription status:', status, err ? err.message : '');
           if (status === 'SUBSCRIBED') {
-            statusEl.textContent = 'Online';
-            statusEl.className = 'online';
+            updateStatus('Online', 'online');
+            isOnline = true;
             console.log('Real-time connected successfully');
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-            statusEl.textContent = 'Offline';
-            statusEl.className = 'offline';
+            updateStatus('Offline', 'offline');
+            isOnline = false;
             console.warn('Realtime disconnected. Retrying in 1s...');
             setTimeout(subscribeToRealtime, 1000);
           } else if (err) {
             console.error('Subscription error:', err.message);
-            statusEl.textContent = 'Offline';
-            statusEl.className = 'offline';
+            updateStatus('Offline', 'offline');
+            isOnline = false;
           }
         });
     }
     subscribeToRealtime();
 
     // --- FALLBACK POLLING ---
-    let isRealtimeActive = false;
-    supabase.channel('public:messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        isRealtimeActive = true;
-      })
-      .subscribe();
     setInterval(() => {
-      if (!isRealtimeActive) {
+      if (!isOnline) {
         console.log('Real-time inactive, polling for updates...');
         loadMessages();
+        checkConnectivity();
       }
     }, 5000);
 
@@ -332,6 +341,7 @@
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
       checkConnectivity();
       loadMessages();
+      subscribeToRealtime();
     }
     init();
   </script>
