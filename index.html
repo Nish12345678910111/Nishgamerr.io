@@ -97,17 +97,6 @@
     let statusTimeout = null;
     let clientIp = null;
 
-    // --- SET CURRENT USERNAME FOR RLS ---
-    async function setCurrentUsername(username) {
-      try {
-        const { error } = await supabase.rpc('set_current_username', { username });
-        if (error) throw error;
-        console.log(`Set current_username to ${username}`);
-      } catch (e) {
-        console.error('Error setting current_username:', e.message);
-      }
-    }
-
     // --- FETCH CLIENT IP ---
     async function fetchClientIp() {
       try {
@@ -192,7 +181,6 @@
           currentUsername = data.username;
           localStorage.setItem('chatUsername', currentUsername);
           currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-          await setCurrentUsername(currentUsername);
           console.log(`Loaded username ${currentUsername} from user_ips`);
         }
       } catch (e) {
@@ -260,8 +248,7 @@
           const messageId = div.dataset.id;
           console.log(`Attempting to delete message ID: ${messageId}`);
           try {
-            await setCurrentUsername(currentUsername);
-            const { error } = await supabase.from('messages').delete().eq('id', messageId);
+            const { error } = await supabase.from('messages').delete().eq('id', messageId).eq('username', currentUsername);
             if (error) throw error;
             console.log(`Deleted message ID: ${messageId}`);
             div.remove();
@@ -281,7 +268,6 @@
     // --- LOAD MESSAGES ---
     async function loadMessages() {
       try {
-        await setCurrentUsername(currentUsername);
         const { data, error } = await supabase.from('messages')
           .select('*')
           .order('created_at', { ascending: true })
@@ -308,7 +294,6 @@
       const messageDiv = addMessageRow(row, true);
       messageInput.value = '';
       try {
-        await setCurrentUsername(currentUsername);
         const { data, error } = await supabase.from('messages').insert([{
           username: currentUsername,
           message: txt,
@@ -331,7 +316,6 @@
     deleteAllBtn.addEventListener('click', async () => {
       if (!confirm('Delete all your messages?')) return;
       try {
-        await setCurrentUsername(currentUsername);
         const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
         if (error) throw error;
         console.log('Deleted all messages for:', currentUsername);
@@ -367,7 +351,6 @@
       currentUsername = val;
       localStorage.setItem('chatUsername', currentUsername);
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-      await setCurrentUsername(currentUsername);
       await storeUsernameInUserIps(currentUsername);
       flashNameMsg('Username saved');
       await requestFCMToken();
@@ -443,7 +426,6 @@
     async function init() {
       await loadUsernameFromUserIps();
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
-      await setCurrentUsername(currentUsername);
       await requestFCMToken();
       checkConnectivity();
       loadMessages();
