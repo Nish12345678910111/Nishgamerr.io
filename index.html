@@ -72,130 +72,134 @@ const autoScrollBtn = document.getElementById('autoScrollBtn');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 const nameMsgEl = document.getElementById('nameMsg');
 
-let currentUsername = localStorage.getItem('chatUsername')||'Guest';
-let autoScroll=true;
+let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
+let autoScroll = true;
 
 // --- NETWORK STATUS ---
-async function checkConnectivity(){
-  try{
-    const { data,error } = await supabase.from('messages').select('id').limit(1);
-    if(error) throw error;
-    statusEl.textContent='Online';
-    statusEl.className='online';
-  } catch(e){
-    statusEl.textContent='Offline';
-    statusEl.className='offline';
+async function checkConnectivity() {
+  try {
+    const { data, error } = await supabase.from('messages').select('id').limit(1);
+    if (error) throw error;
+    statusEl.textContent = 'Online';
+    statusEl.className = 'online';
+  } catch (e) {
+    statusEl.textContent = 'Offline';
+    statusEl.className = 'offline';
   }
 }
-window.addEventListener('online',checkConnectivity);
-window.addEventListener('offline',checkConnectivity);
+window.addEventListener('online', checkConnectivity);
+window.addEventListener('offline', checkConnectivity);
 checkConnectivity();
 
 // --- HELPERS ---
-function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function fmtTime(ts){ const d=new Date(ts); return isNaN(d)?'??:??':d.toLocaleString(); }
-function flashNameMsg(txt){ nameMsgEl.textContent=txt; setTimeout(()=>nameMsgEl.textContent='',2000); }
+function escapeHtml(s) { return String(s || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
+function fmtTime(ts) { const d = new Date(ts); return isNaN(d) ? '??:??' : d.toLocaleString(); }
+function flashNameMsg(txt) { nameMsgEl.textContent = txt; setTimeout(() => nameMsgEl.textContent = '', 2000); }
 
 // --- DISPLAY MESSAGE ---
-function addMessageRow(row,pending=false){
-  const div=document.createElement('div');
-  div.className='message'+(pending?' pending':'');
-  div.dataset.id=row.id;
-  const delBtn=row.username===currentUsername?` <button class="delete-btn">X</button>`:'';
-  div.innerHTML=`<span class="username">${escapeHtml(row.username)}</span>: 
+function addMessageRow(row, pending = false) {
+  const div = document.createElement('div');
+  div.className = 'message' + (pending ? ' pending' : '');
+  div.dataset.id = row.id;
+  const delBtn = row.username === currentUsername ? ` <button class="delete-btn">X</button>` : '';
+  div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
   <span class="text">${escapeHtml(row.message)}</span> 
   <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
   chatEl.appendChild(div);
-  if(autoScroll) chatEl.scrollTop=chatEl.scrollHeight;
+  if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 
   // delete message
-  if(delBtn){
-    div.querySelector('.delete-btn').addEventListener('click',async()=>{
-      try{
-        await supabase.from('messages').delete().eq('id',row.id);
+  if (delBtn) {
+    div.querySelector('.delete-btn').addEventListener('click', async () => {
+      try {
+        const { error } = await supabase.from('messages').delete().eq('id', row.id).eq('username', currentUsername);
+        if (error) throw error;
         div.remove();
-      }catch(e){ alert('Delete failed'); }
+      } catch (e) { alert('Delete failed'); }
     });
   }
 }
 
 // --- LOAD MESSAGES ---
-async function loadMessages(){
-  try{
-    const { data,error } = await supabase.from('messages').select('*').order('created_at',{ascending:true});
-    if(error) throw error;
-    chatEl.innerHTML='';
-    data.forEach(r=>addMessageRow(r,false));
-  } catch(e){ console.error(e); }
+async function loadMessages() {
+  try {
+    const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+    if (error) throw error;
+    chatEl.innerHTML = '';
+    data.forEach(r => addMessageRow(r, false));
+  } catch (e) { console.error(e); }
 }
 
 // --- SEND MESSAGE ---
-async function sendMessage(){
-  const txt=messageInput.value.trim();
-  if(!txt) return;
-  const row={username:currentUsername,message:txt,created_at:new Date().toISOString()};
-  addMessageRow(row,true);
-  messageInput.value='';
-  try{
+async function sendMessage() {
+  const txt = messageInput.value.trim();
+  if (!txt) return;
+  const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
+  addMessageRow(row, true);
+  messageInput.value = '';
+  try {
     const { error } = await supabase.from('messages').insert([row]);
-    if(error) throw error;
+    if (error) throw error;
     loadMessages();
-  }catch(e){
-    console.error('Send failed',e);
+  } catch (e) {
+    console.error('Send failed', e);
     alert('Send failed');
   }
 }
 
 // --- AUTO SCROLL ---
-autoScrollBtn.addEventListener('click',()=>{
-  autoScroll=!autoScroll;
-  autoScrollBtn.textContent='Auto-Scroll: '+(autoScroll?'On':'Off');
+autoScrollBtn.addEventListener('click', () => {
+  autoScroll = !autoScroll;
+  autoScrollBtn.textContent = 'Auto-Scroll: ' + (autoScroll ? 'On' : 'Off');
 });
 
 // --- DELETE ALL ---
-deleteAllBtn.addEventListener('click',async()=>{
-  if(!confirm('Delete all your messages?')) return;
-  try{
-    const { error } = await supabase.from('messages').delete().eq('username',currentUsername);
-    if(error) throw error;
+deleteAllBtn.addEventListener('click', async () => {
+  if (!confirm('Delete all your messages?')) return;
+  try {
+    const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
+    if (error) throw error;
     loadMessages();
-  }catch(e){ alert('Delete failed'); }
+  } catch (e) { alert('Delete failed'); }
 });
 
 // --- USERNAME ---
-saveNameBtn.addEventListener('click',()=>{
-  const val=usernameEl.value.trim();
-  if(!val) { flashNameMsg('Enter a username'); return; }
-  currentUsername=val;
-  localStorage.setItem('chatUsername',currentUsername);
-  currentUsernameLabel.textContent='Username: '+currentUsername;
+saveNameBtn.addEventListener('click', () => {
+  const val = usernameEl.value.trim();
+  if (!val) { flashNameMsg('Enter a username'); return; }
+  currentUsername = val;
+  localStorage.setItem('chatUsername', currentUsername);
+  currentUsernameLabel.textContent = 'Username: ' + currentUsername;
   flashNameMsg('Username saved');
   loadMessages();
 });
 
 // --- ENTER KEY ---
-messageInput.addEventListener('keydown',(e)=>{
-  if(e.key==='Enter') sendMessage();
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMessage();
 });
-usernameEl.addEventListener('keydown',(e)=>{
-  if(e.key==='Enter') saveNameBtn.click();
+usernameEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveNameBtn.click();
 });
+
+// --- SEND BUTTON ---
+sendBtn.addEventListener('click', sendMessage);
 
 // --- REALTIME SUBSCRIPTION ---
 supabase.channel('public:messages')
-  .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
-    const row=payload.new;
-    addMessageRow(row,false);
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+    const row = payload.new;
+    addMessageRow(row, false);
   })
-  .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},payload=>{
-    const delId=payload.old.id;
-    const el=document.querySelector(`.message[data-id='${delId}']`);
-    if(el) el.remove();
+  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+    const delId = payload.old.id;
+    const el = document.querySelector(`.message[data-id='${delId}']`);
+    if (el) el.remove();
   })
   .subscribe();
 
 // --- INITIAL LOAD ---
-currentUsernameLabel.textContent='Username: '+currentUsername;
+currentUsernameLabel.textContent = 'Username: ' + currentUsername;
 loadMessages();
 </script>
 </body>
