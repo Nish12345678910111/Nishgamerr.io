@@ -15,9 +15,10 @@
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
     #chat { background:#071127; border-radius:8px; padding:12px; height:285px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
-    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center;}
-    .message.new { border-left: 3px solid #60a5fa; } /* Fixed: No blue fill, just blue border for notification */
+    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center; word-break: break-word; max-width: 100%;} /* Fix: Text wraps */
+    .message.new { border-left: 3px solid #60a5fa; } /* Blue border, no fill */
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
+    .text { word-break: break-word; } /* Fix: Text wraps within message */
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
     .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
     .delete-btn:hover { opacity:0.8; }
@@ -108,7 +109,7 @@
       loadMessages();
     }
 
-    // --- AUTO REFRESH LOOP (~0.5ms via requestAnimationFrame) ---
+    // --- AUTO REFRESH LOOP (~16ms via requestAnimationFrame) ---
     function startAutoRefresh() {
       function loop() {
         refreshMessages();
@@ -291,6 +292,7 @@
     // --- LOAD MESSAGES ---
     async function loadMessages() {
       try {
+        const wasAtBottom = autoScroll || chatEl.scrollTop + chatEl.clientHeight >= chatEl.scrollHeight - 10; // Check if at bottom
         const { data, error } = await supabase.from('messages')
           .select('*')
           .order('created_at', { ascending: true })
@@ -304,7 +306,7 @@
           newCache.set(r.id, div);
         });
         messagesCache = newCache;
-        if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
+        if (wasAtBottom || autoScroll) chatEl.scrollTop = chatEl.scrollHeight; // Fix: Restore scroll to bottom
       } catch (e) {
         console.error('Load messages error:', e.message);
         alert('Failed to load messages: ' + e.message);
@@ -361,6 +363,7 @@
     autoScrollBtn.addEventListener('click', () => {
       autoScroll = !autoScroll;
       autoScrollBtn.textContent = 'Auto-Scroll: ' + (autoScroll ? 'On' : 'Off');
+      if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight; // Scroll to bottom when enabled
     });
 
     // --- USERNAME ---
@@ -471,4 +474,4 @@
     init();
   </script>
 </body>
-    </html>
+        </html>
