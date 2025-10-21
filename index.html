@@ -19,13 +19,15 @@
     .message.new { background: #1e3a8a; }
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
-    .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; opacity:0.5; cursor:not-allowed;}
+    .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
+    .delete-btn:hover { opacity:0.8; }
     #controls { display:flex; gap:8px; margin-top:4px;}
     #messageInput { flex:1; padding:10px; border-radius:8px; background:#0f1724; color:#e6eef8; border:1px solid #1f2937;}
-    button { border:none; border-radius:6px; cursor:pointer; }
+    button { border:none; border-radius:6px; cursor:pointer; transition: opacity 0.2s;}
+    button:hover { opacity:0.8; }
     #sendBtn { background:#2563eb; color:white; padding:10px 14px;}
     #autoScrollBtn { background:#facc15; color:#1f2937; padding:8px 12px; font-size:0.85rem;}
-    #deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem; opacity:0.5; cursor:not-allowed;}
+    #deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem;}
     .pending { opacity:0.6; font-style:italic;}
     #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700;}
     .online { background:#16a34a; color:#052e0b; }
@@ -43,7 +45,7 @@
         <input id="username" placeholder="Enter username">
         <button id="saveName">Save</button>
         <button id="autoScrollBtn">Auto-Scroll: On</button>
-        <button id="deleteAllBtn" disabled>Delete All My Messages</button>
+        <button id="deleteAllBtn">Delete All My Messages</button>
         <div id="nameMsg"></div>
       </div>
       <div style="color:#94a3b8">Old GUI • Realtime</div>
@@ -84,6 +86,7 @@
     const currentUsernameLabel = document.getElementById('currentUsername');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
     const statusEl = document.getElementById('status');
     const autoScrollBtn = document.getElementById('autoScrollBtn');
     const nameMsgEl = document.getElementById('nameMsg');
@@ -92,6 +95,20 @@
     let autoScroll = true;
     let isOnline = false;
     let statusTimeout = null;
+    let clientIp = null;
+
+    // --- FETCH CLIENT IP ---
+    async function fetchClientIp() {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        clientIp = data.ip;
+        console.log('Client IP:', clientIp);
+      } catch (e) {
+        console.error('IP fetch error:', e);
+        clientIp = 'unknown';
+      }
+    }
 
     // --- FCM TOKEN REGISTRATION ---
     async function requestFCMToken() {
@@ -137,6 +154,37 @@
       } catch (e) {
         console.error('Error checking username:', e);
         return false;
+      }
+    }
+
+    // --- STORE USERNAME IN user_ips ---
+    async function storeUsernameInUserIps(username) {
+      if (!clientIp) await fetchClientIp();
+      try {
+        const { error } = await supabase.from('user_ips').upsert([
+          { ip: clientIp, username }
+        ], { onConflict: 'ip' });
+        if (error) throw error;
+        console.log(`Stored username ${username} for IP ${clientIp}`);
+      } catch (e) {
+        console.error('Error storing username in user_ips:', e.message);
+      }
+    }
+
+    // --- LOAD USERNAME FROM user_ips ---
+    async function loadUsernameFromUserIps() {
+      if (!clientIp) await fetchClientIp();
+      try {
+        const { data, error } = await supabase.from('user_ips').select('username').eq('ip', clientIp).single();
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116: no rows
+        if (data && data.username) {
+          currentUsername = data.username;
+          localStorage.setItem('chatUsername', currentUsername);
+          currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+          console.log(`Loaded username ${currentUsername} from user_ips`);
+        }
+      } catch (e) {
+        console.error('Error loading username from user_ips:', e.message);
       }
     }
 
@@ -189,11 +237,18 @@
       div.className = `message${pending ? ' pending' : ' new'}`;
       if (row.tempId) div.dataset.tempId = row.tempId;
       if (row.id) div.dataset.id = row.id;
-      const delBtn = row.username === currentUsername ? ` <button class="delete-btn" data-id="${row.id || ''}" disabled>X</button>` : '';
+      const delBtn = row.username === currentUsername ? ` <button class="delete-btn" data-id="${row.id || ''}">X</button>` : '';
       div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
       <span class="text">${escapeHtml(row.message)}</span> 
       <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
       chatEl.appendChild(div);
+      if (delBtn) {
+        const deleteBtn = div.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', () => {
+          alert('Delete not available due to server configuration (42P01 error). Contact admin to fix RLS policy.');
+          console.log(`Delete clicked for message ID: ${row.id}, but disabled due to 42P01`);
+        });
+      }
       if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
       if (!pending) {
         setTimeout(() => div.classList.remove('new'), 1000);
@@ -248,6 +303,12 @@
       }
     }
 
+    // --- DELETE ALL MESSAGES ---
+    deleteAllBtn.addEventListener('click', () => {
+      alert('Delete All not available due to server configuration (42P01 error). Contact admin to fix RLS policy.');
+      console.log('Delete All clicked, but disabled due to 42P01');
+    });
+
     // --- AUTO SCROLL ---
     autoScrollBtn.addEventListener('click', () => {
       autoScroll = !autoScroll;
@@ -273,6 +334,7 @@
       currentUsername = val;
       localStorage.setItem('chatUsername', currentUsername);
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
+      await storeUsernameInUserIps(currentUsername);
       flashNameMsg('Username saved');
       await requestFCMToken();
       loadMessages();
@@ -345,6 +407,7 @@
 
     // --- INITIAL LOAD ---
     async function init() {
+      await loadUsernameFromUserIps();
       currentUsernameLabel.textContent = 'Username: ' + currentUsername;
       await requestFCMToken();
       checkConnectivity();
@@ -353,4 +416,4 @@
     init();
   </script>
 </body>
-</html>
+  </html>
