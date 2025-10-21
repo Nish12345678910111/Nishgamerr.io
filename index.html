@@ -302,7 +302,7 @@
           const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
           if (row.username !== currentUsername && !existing) {
             addMessageRow(row, false);
-            showNotification(row.username, row.message); // Fixed notification
+            showNotification(row.username, row.message);
           } else if (existing && row.username === currentUsername) {
             existing.className = 'message new';
             existing.dataset.id = row.id;
@@ -349,4 +349,4 @@
     init();
   </script>
 </body>
-</html>
+  </html>
