@@ -24,7 +24,6 @@
     button { border:none; border-radius:6px; cursor:pointer; }
     #sendBtn { background:#2563eb; color:white; padding:10px 14px;}
     #autoScrollBtn { background:#facc15; color:#1f2937; padding:8px 12px; font-size:0.85rem;}
-    #deleteAllBtn { background:#dc2626; color:white; padding:8px 12px; font-size:0.85rem;}
     .pending { opacity:0.6; font-style:italic;}
     #status { position:fixed; right:14px; top:14px; padding:6px 10px; border-radius:8px; font-weight:700;}
     .online { background:#16a34a; color:#052e0b; }
@@ -39,10 +38,9 @@
     <div class="top">
       <div>
         <span id="currentUsername">Username: Guest</span><br>
-        <input id="username" placeholder="Enter username or switch to previous">
-        <button id="saveName">Save/Switch</button>
+        <input id="username" placeholder="Enter username">
+        <button id="saveName">Save</button>
         <button id="autoScrollBtn">Auto-Scroll: On</button>
-        <button id="deleteAllBtn">Delete All My Messages</button>
         <div id="nameMsg"></div>
       </div>
       <div style="color:#94a3b8">Old GUI • Realtime</div>
@@ -85,7 +83,6 @@
     const sendBtn = document.getElementById('sendBtn');
     const statusEl = document.getElementById('status');
     const autoScrollBtn = document.getElementById('autoScrollBtn');
-    const deleteAllBtn = document.getElementById('deleteAllBtn');
     const nameMsgEl = document.getElementById('nameMsg');
 
     let currentUsername = localStorage.getItem('chatUsername') || 'Guest';
@@ -102,7 +99,7 @@
         if (permission === 'granted') {
           await navigator.serviceWorker.register('/sw.js');
           const token = await messaging.getToken({
-            vapidKey: 'YOUR_VAPID_KEY' // Replace with your Firebase VAPID key
+            vapidKey: 'BOe6f-8PcpCREZloxO9y55eiAjV5NJELtulX6PhxUARTqBu6Ns9XNKhp5jUNlZttGgIjFkFvUeSADXB02xOOHpQ' // Your VAPID key
           });
           console.log('FCM Token:', token);
           localStorage.setItem('fcmToken', token);
@@ -184,31 +181,13 @@
       div.className = `message${pending ? ' pending' : ' new'}`;
       if (row.tempId) div.dataset.tempId = row.tempId;
       if (row.id) div.dataset.id = row.id;
-      const delBtn = row.username === currentUsername ? ` <button class="delete-btn" data-id="${row.id || ''}">X</button>` : '';
       div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
       <span class="text">${escapeHtml(row.message)}</span> 
-      <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
+      <span class="ts">[${fmtTime(row.created_at)}]</span>`;
       chatEl.appendChild(div);
       if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
       if (!pending) {
         setTimeout(() => div.classList.remove('new'), 1000);
-      }
-
-      if (delBtn) {
-        const deleteBtn = div.querySelector('.delete-btn');
-        deleteBtn.addEventListener('click', async () => {
-          const messageId = div.dataset.id;
-          console.log(`Attempting to delete message ID: ${messageId}`);
-          try {
-            const { error } = await supabase.from('messages').delete().eq('id', messageId).eq('username', currentUsername);
-            if (error) throw error;
-            console.log(`Deleted message ID: ${messageId}`);
-            div.remove();
-          } catch (e) {
-            console.error('Delete error:', e.message);
-            alert('Delete failed: ' + e.message);
-          }
-        });
       }
       return div;
     }
@@ -264,20 +243,6 @@
     autoScrollBtn.addEventListener('click', () => {
       autoScroll = !autoScroll;
       autoScrollBtn.textContent = 'Auto-Scroll: ' + (autoScroll ? 'On' : 'Off');
-    });
-
-    // --- DELETE ALL ---
-    deleteAllBtn.addEventListener('click', async () => {
-      if (!confirm('Delete all your messages?')) return;
-      try {
-        const { error } = await supabase.from('messages').delete().eq('username', currentUsername);
-        if (error) throw error;
-        console.log('Deleted all messages for:', currentUsername);
-        loadMessages();
-      } catch (e) {
-        console.error('Delete all error:', e.message);
-        alert('Delete all failed: ' + e.message);
-      }
     });
 
     // --- USERNAME ---
@@ -340,19 +305,13 @@
             setTimeout(() => existing.classList.remove('new'), 1000);
           }
         })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-          console.log('Real-time DELETE:', payload);
-          const delId = payload.old.id;
-          const el = document.querySelector(`.message[data-id='${delId}']`);
-          if (el) el.remove();
-        })
         .subscribe((status, err) => {
           console.log('Subscription status:', status, err ? err.message : '');
           if (status === 'SUBSCRIBED') {
             updateStatus('Online', 'online');
             isOnline = true;
             console.log('Real-time connected successfully');
-          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          } else if (status === 'CLOSED' || status == 'CHANNEL_ERROR') {
             updateStatus('Offline', 'offline');
             isOnline = false;
             console.warn('Realtime disconnected. Retrying in 2s...');
@@ -385,4 +344,4 @@
     init();
   </script>
 </body>
-  </html>
+          </html>
