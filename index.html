@@ -96,15 +96,25 @@
     let isOnline = false;
     let statusTimeout = null;
     let clientIp = null;
-    let refreshTimeout = null;
+    let lastRefresh = 0;
+    let messagesCache = new Map(); // Cache to track messages
 
     // --- DEBOUNCE REFRESH ---
-    function debounceRefresh() {
-      if (refreshTimeout) clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(() => {
-        console.log('Debounced refresh triggered');
-        loadMessages();
-      }, 1000);
+    function refreshMessages() {
+      const now = Date.now();
+      if (now - lastRefresh < 1000) return; // Debounce to 1s for performance
+      lastRefresh = now;
+      console.log('Refreshing messages');
+      loadMessages();
+    }
+
+    // --- AUTO REFRESH LOOP (~0.5ms via requestAnimationFrame) ---
+    function startAutoRefresh() {
+      function loop() {
+        refreshMessages();
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
     }
 
     // --- FETCH CLIENT IP ---
@@ -233,9 +243,9 @@
 
     // --- DISPLAY MESSAGE ---
     function addMessageRow(row, pending = false) {
-      console.log('Adding message:', { ...row, pending });
-      const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
-      if (existing) {
+      const cacheKey = row.id || row.tempId;
+      if (messagesCache.has(cacheKey)) {
+        const existing = messagesCache.get(cacheKey);
         if (pending) return existing;
         existing.className = 'message new';
         existing.dataset.id = row.id;
@@ -252,6 +262,7 @@
       <span class="text">${escapeHtml(row.message)}</span> 
       <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`;
       chatEl.appendChild(div);
+      messagesCache.set(cacheKey, div);
       if (delBtn) {
         const deleteBtn = div.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', async () => {
@@ -262,7 +273,8 @@
             if (error) throw error;
             console.log(`Deleted message ID: ${messageId}`);
             div.remove();
-            debounceRefresh(); // Trigger 1-second refresh
+            messagesCache.delete(messageId);
+            refreshMessages(); // Trigger refresh
           } catch (e) {
             console.error('Delete error:', e.message);
             alert('Delete failed: ' + e.message);
@@ -284,8 +296,14 @@
           .order('created_at', { ascending: true })
           .limit(50);
         if (error) throw error;
+        const newCache = new Map();
         chatEl.innerHTML = ''; // Clear chatbox
-        data.forEach(r => addMessageRow(r, false));
+        messagesCache.clear();
+        data.forEach(r => {
+          const div = addMessageRow(r, false);
+          newCache.set(r.id, div);
+        });
+        messagesCache = newCache;
         if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
       } catch (e) {
         console.error('Load messages error:', e.message);
@@ -311,12 +329,15 @@
         messageDiv.className = 'message new';
         messageDiv.dataset.id = data.id;
         delete messageDiv.dataset.tempId;
+        messagesCache.delete(tempId);
+        messagesCache.set(data.id, messageDiv);
         setTimeout(() => messageDiv.classList.remove('new'), 1000);
         console.log('Message sent and confirmed:', data);
       } catch (e) {
         console.error('Send failed:', e.message);
         alert('Send failed: ' + e.message);
         messageDiv.remove();
+        messagesCache.delete(tempId);
       }
     }
 
@@ -328,7 +349,8 @@
         if (error) throw error;
         console.log('Deleted all messages for:', currentUsername);
         chatEl.innerHTML = ''; // Clear chatbox
-        debounceRefresh(); // Trigger 1-second refresh
+        messagesCache.clear();
+        refreshMessages(); // Trigger refresh
       } catch (e) {
         console.error('Delete all error:', e.message);
         alert('Delete all failed: ' + e.message);
@@ -391,26 +413,21 @@
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
           console.log('Real-time INSERT:', payload);
           const row = payload.new;
-          const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
-          if (row.username !== currentUsername && !existing) {
+          if (!messagesCache.has(row.id)) {
             addMessageRow(row, false);
             showNotification(row.username, row.message);
-          } else if (existing && row.username === currentUsername) {
-            existing.className = 'message new';
-            existing.dataset.id = row.id;
-            delete existing.dataset.tempId;
-            setTimeout(() => existing.classList.remove('new'), 1000);
           }
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
           console.log('Real-time DELETE:', payload);
           const deletedId = payload.old.id;
-          const messageDiv = document.querySelector(`.message[data-id='${deletedId}']`);
+          const messageDiv = messagesCache.get(deletedId);
           if (messageDiv) {
             messageDiv.remove();
+            messagesCache.delete(deletedId);
             console.log(`Removed message ID: ${deletedId} from chatbox`);
           }
-          debounceRefresh(); // Trigger 1-second refresh as fallback
+          refreshMessages(); // Trigger refresh
         })
         .subscribe((status, err) => {
           console.log('Subscription status:', status, err ? err.message : '');
@@ -427,7 +444,7 @@
             console.error('Subscription error:', err.message);
             updateStatus('Offline', 'offline');
             isOnline = false;
-            debounceRefresh(); // Refresh on error
+            refreshMessages(); // Refresh on error
           }
         });
     }
@@ -449,6 +466,7 @@
       await requestFCMToken();
       checkConnectivity();
       loadMessages();
+      startAutoRefresh(); // Start auto-refresh loop
     }
     init();
   </script>
