@@ -134,7 +134,7 @@
           statusEl.className = className;
           console.log(`Status updated: ${status}`);
         }
-      }, 500); // Debounce to prevent rapid flips
+      }, 500);
     }
 
     // --- CHECK CONNECTIVITY ---
@@ -160,9 +160,16 @@
 
     // --- DISPLAY MESSAGE ---
     function addMessageRow(row, pending = false) {
-      console.log('Adding message:', row);
+      console.log('Adding message:', { ...row, pending });
       const existing = document.querySelector(`.message[data-temp-id='${row.tempId}']`) || document.querySelector(`.message[data-id='${row.id}']`);
-      if (existing) return existing;
+      if (existing) {
+        if (pending) return existing; // Skip if pending already exists
+        // Update existing pending message to confirmed
+        existing.className = 'message';
+        existing.dataset.id = row.id;
+        delete existing.dataset.tempId;
+        return existing;
+      }
       const div = document.createElement('div');
       div.className = 'message' + (pending ? ' pending' : '');
       if (row.tempId) div.dataset.tempId = row.tempId;
@@ -298,8 +305,13 @@
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
           console.log('Real-time INSERT:', payload);
           const row = payload.new;
-          if (row.username !== currentUsername || !document.querySelector(`.message[data-id='${row.id}']`)) {
+          const existing = document.querySelector(`.message[data-temp-id]`) || document.querySelector(`.message[data-id='${row.id}']`);
+          if (row.username !== currentUsername && !existing) {
             addMessageRow(row, false);
+          } else if (existing && row.username === currentUsername) {
+            existing.className = 'message';
+            existing.dataset.id = row.id;
+            delete existing.dataset.tempId;
           }
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
