@@ -12,7 +12,7 @@
     .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
-    #chat { background:#071127; border-radius:8px; padding:12px; height:289px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
+    #chat { background:#071127; border-radius:8px; padding:12px; height:200px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
     .message { margin-bottom:10px;}
     .username { color:#60a5fa; font-weight:700; margin-right:8px;}
     .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
@@ -93,7 +93,7 @@
     async function saveUsernameToIp(ip, username) {
       try {
         const { error } = await supabase.from('user_ips').insert([{ ip_address: ip, username }]);
-        if (error && error.code !== '23505') throw error; // Ignore duplicate entry error
+        if (error && error.code !== '23505') throw error;
       } catch (e) {
         console.error('Failed to save username to IP:', e);
       }
@@ -146,7 +146,7 @@
 
     // --- DISPLAY MESSAGE ---
     function addMessageRow(row, pending = false) {
-      console.log('Adding message:', row); // Debug log
+      console.log('Adding message:', row);
       const div = document.createElement('div');
       div.className = 'message' + (pending ? ' pending' : '');
       div.dataset.id = row.id;
@@ -157,7 +157,6 @@
       chatEl.appendChild(div);
       if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 
-      // Delete message
       if (delBtn) {
         div.querySelector('.delete-btn').addEventListener('click', async () => {
           try {
@@ -167,6 +166,7 @@
           } catch (e) { alert('Delete failed'); }
         });
       }
+      return div; // Return the DOM element for updating
     }
 
     // --- LOAD MESSAGES ---
@@ -184,15 +184,20 @@
       const txt = messageInput.value.trim();
       if (!txt) return;
       const row = { username: currentUsername, message: txt, created_at: new Date().toISOString() };
-      addMessageRow(row, true);
+      const messageDiv = addMessageRow(row, true); // Add as pending
       messageInput.value = '';
       try {
-        const { error } = await supabase.from('messages').insert([row]);
+        const { data, error } = await supabase.from('messages').insert([row]).select().single();
         if (error) throw error;
+        // Update the pending message to confirmed
+        messageDiv.className = 'message';
+        messageDiv.dataset.id = data.id;
         await saveUsernameToIp(clientIp, currentUsername);
+        console.log('Message confirmed:', data);
       } catch (e) {
         console.error('Send failed:', e);
         alert('Send failed');
+        messageDiv.remove(); // Remove failed message
       }
     }
 
@@ -223,11 +228,8 @@
         flashNameMsg('Already using this username');
         return;
       }
-
-      // Check if the username is one of the user's previous usernames
       const prevUsernames = await loadUsernamesForIp(clientIp);
       if (prevUsernames.includes(val)) {
-        // Switch to existing username
         currentUsername = val;
         localStorage.setItem('chatUsername', currentUsername);
         currentUsernameLabel.textContent = 'Username: ' + currentUsername;
@@ -236,15 +238,11 @@
         usernameEl.value = '';
         return;
       }
-
-      // Check if the username is available (not used by anyone)
       const isAvailable = await isUsernameAvailable(val);
       if (!isAvailable) {
         flashNameMsg('Username already taken');
         return;
       }
-
-      // Save new username
       currentUsername = val;
       localStorage.setItem('chatUsername', currentUsername);
       await saveUsernameToIp(clientIp, currentUsername);
@@ -268,28 +266,50 @@
     // --- REALTIME SUBSCRIPTION ---
     supabase.channel('public:messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        console.log('Real-time INSERT:', payload); // Debug log
+        console.log('Real-time INSERT:', payload);
         const row = payload.new;
-        addMessageRow(row, false);
+        // Avoid duplicating own message
+        if (row.username !== currentUsername || !document.querySelector(`.message[data-id='${row.id}']`)) {
+          addMessageRow(row, false);
+        }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-        console.log('Real-time DELETE:', payload); // Debug log
+        console.log('Real-time DELETE:', payload);
         const delId = payload.old.id;
         const el = document.querySelector(`.message[data-id='${delId}']`);
         if (el) el.remove();
       })
       .subscribe((status, err) => {
-        console.log('Subscription status:', status, err ? err.message : ''); // Debug log
+        console.log('Subscription status:', status, err ? err.message : '');
         if (status === 'SUBSCRIBED') {
           statusEl.textContent = 'Online';
           statusEl.className = 'online';
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          console.log('Real-time connected successfully');
+        } else if (status === 'CLOSED' || status == 'CHANNEL_ERROR') {
           statusEl.textContent = 'Offline';
           statusEl.className = 'offline';
           console.warn('Realtime disconnected. Retrying...');
           setTimeout(() => supabase.channel('public:messages').subscribe(), 1000);
+        } else if (err) {
+          console.error('Subscription error:', err.message);
+          statusEl.textContent = 'Offline';
+          statusEl.className = 'offline';
         }
       });
+
+    // --- FALLBACK POLLING ---
+    let isRealtimeActive = false;
+    supabase.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        isRealtimeActive = true;
+      })
+      .subscribe();
+    setInterval(() => {
+      if (!isRealtimeActive) {
+        console.log('Real-time inactive, polling for updates...');
+        loadMessages();
+      }
+    }, 5000);
 
     // --- INITIAL LOAD ---
     async function init() {
