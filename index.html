@@ -18,8 +18,8 @@
     .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:flex-start; flex-wrap: wrap; max-width: 100%;} /* Wrap at border */
     .message.new { border-left: 3px solid #60a5fa; }
     .username { color:#60a5fa; font-weight:700; margin-right:8px; white-space: nowrap; max-width: 20%; overflow: hidden; text-overflow: ellipsis;} /* Username in one line */
-    .text { flex: 1; max-width: 100%; word-break: break-word;} /* Wrap message at border */
-    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; white-space: nowrap;} /* Timestamp at end */
+    .text { flex: 1; max-width: calc(100% - 150px); word-break: break-word; margin-right: 8px;} /* Wrap message at border, account for username/ts/delete */
+    .ts { color:#94a3b8; font-size:0.82rem; white-space: nowrap;} /* Timestamp at end */
     .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
     .delete-btn:hover { opacity:0.8; }
     #controls { display:flex; gap:8px; margin-top:4px;}
@@ -258,10 +258,8 @@
       div.className = `message${pending ? ' pending' : ' new'}`;
       if (row.tempId) div.dataset.tempId = row.tempId;
       if (row.id) div.dataset.id = row.id;
-      const delBtn = row.username === currentUsername ? ` <button class="delete-btn" data-id="${row.id || ''}">X</button>` : '';
-      div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: 
-      <span class="text">${escapeHtml(row.message)}</span> 
-      <span class="ts">[${fmtTime(row.created_at)}]</span>${delBtn}`; // Fix: Timestamp after message
+      const delBtn = row.username === currentUsername ? `<button class="delete-btn" data-id="${row.id || ''}">X</button>` : '';
+      div.innerHTML = `<span class="username">${escapeHtml(row.username)}</span>: <span class="text">${escapeHtml(row.message)}</span> <span class="ts">[${fmtTime(row.created_at)}]</span> ${delBtn}`; // Fix: Timestamp after message
       chatEl.appendChild(div);
       messagesCache.set(cacheKey, div);
       if (delBtn) {
