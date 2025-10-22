@@ -15,11 +15,11 @@
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
     #chat { background:#071127; border-radius:8px; padding:12px; height:285px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
-    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center; word-break: break-word; max-width: 100%;}
+    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center; white-space: nowrap; max-width: 100%; overflow-x: auto;} /* Fix: Single line, horizontal scroll */
     .message.new { border-left: 3px solid #60a5fa; }
-    .username { color:#60a5fa; font-weight:700; margin-right:8px; word-break: break-word; max-width: 30%;} /* Fix: Username wraps, no cut-off */
-    .text { word-break: break-word; flex: 1;} /* Text wraps, takes remaining space */
-    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px;}
+    .username { color:#60a5fa; font-weight:700; margin-right:8px; max-width: 20%; overflow: hidden; text-overflow: ellipsis;} /* Fix: Username in one line */
+    .text { flex: 1; max-width: 60%; overflow: hidden; text-overflow: ellipsis;} /* Fix: Message in one line */
+    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; white-space: nowrap;}
     .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
     .delete-btn:hover { opacity:0.8; }
     #controls { display:flex; gap:8px; margin-top:4px;}
@@ -43,7 +43,7 @@
     <div class="top">
       <div>
         <span id="currentUsername">Username: Guest</span><br>
-        <input id="username" placeholder="Enter username" maxlength="20"> <!-- Fix: 20-char limit -->
+        <input id="username" placeholder="Enter username" maxlength="20">
         <button id="saveName">Save</button>
         <button id="autoScrollBtn">Auto-Scroll: On</button>
         <button id="deleteAllBtn">Delete All My Messages</button>
