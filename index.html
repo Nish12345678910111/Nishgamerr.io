@@ -15,11 +15,11 @@
     #currentUsername { color:#94a3b8; font-size:0.95rem; margin-bottom:4px;}
     #username { background:#0f1724; color:#e6eef8; border:1px solid #1f2937; padding:6px 8px; border-radius:6px; width:48%;}
     #chat { background:#071127; border-radius:8px; padding:12px; height:285px; overflow-y:auto; border:1px solid #132033; margin-bottom:8px;}
-    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:center; white-space: nowrap; max-width: 100%; overflow-x: auto;} /* Fix: Single line, horizontal scroll */
+    .message { margin-bottom:10px; transition: background 0.3s; display:flex; align-items:flex-start; flex-wrap: wrap; max-width: 100%;} /* Fix: Wrap at border */
     .message.new { border-left: 3px solid #60a5fa; }
-    .username { color:#60a5fa; font-weight:700; margin-right:8px; max-width: 20%; overflow: hidden; text-overflow: ellipsis;} /* Fix: Username in one line */
-    .text { flex: 1; max-width: 60%; overflow: hidden; text-overflow: ellipsis;} /* Fix: Message in one line */
-    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; white-space: nowrap;}
+    .username { color:#60a5fa; font-weight:700; margin-right:8px; white-space: nowrap; max-width: 20%; overflow: hidden; text-overflow: ellipsis;} /* Username in one line */
+    .text { flex: 1; max-width: 100%; word-break: break-word;} /* Fix: Wrap message at border */
+    .ts { color:#94a3b8; font-size:0.82rem; margin-left:8px; white-space: nowrap;} /* Timestamp in one line */
     .delete-btn { background:#dc2626; color:white; padding:2px 6px; font-size:0.8rem; margin-left:8px; cursor:pointer; transition: opacity 0.2s;}
     .delete-btn:hover { opacity:0.8; }
     #controls { display:flex; gap:8px; margin-top:4px;}
@@ -442,7 +442,7 @@
             updateStatus('Online', 'online');
             isOnline = true;
             console.log('Real-time connected successfully');
-          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          } else if (status === 'CLOSED' || status == 'CHANNEL_ERROR') {
             updateStatus('Offline', 'offline');
             isOnline = false;
             console.warn('Realtime disconnected. Retrying in 2s...');
