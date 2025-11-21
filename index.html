@@ -167,15 +167,6 @@ function fmtTime(iso) { try { return new Date(iso).toLocaleString(undefined, { y
 async function sha256hex(str) { const enc = new TextEncoder(); const data = enc.encode(str); const h = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join(''); }
 async function getPublicIp() { try { const r = await fetch('https://api.ipify.org?format=json'); const j = await r.json(); return j.ip || null; } catch { return null; } }
 function normName(n) { return String(n||'').replace(/\s+/g, ' ').trim(); }
-async function updateMessagesUsername(oldUsername, newUsername) {
-  if (!oldUsername || oldUsername === newUsername) return;
-  try {
-    const { error } = await supabase.from('messages').update({ username: newUsername }).eq('username', oldUsername);
-    if (error) console.error('Failed to update messages username:', error);
-  } catch (e) {
-    console.error('Update messages error:', e);
-  }
-}
 /* === RENDER MESSAGE === */
 function renderRow(row, isSending = false) {
   if (!row) return;
@@ -279,7 +270,6 @@ saveNameBtn.addEventListener('click', async () => {
   usernameEl.value = name;
   if (loggedAs && loggedAs === name) { currentUsernameLabel.textContent = 'Username: ' + name; localStorage.setItem('chatUsername', name); showError('Active: ' + name); return; }
   const rec = await getUserByUsername(name);
-  const oldLoggedAs = loggedAs;
   if (rec && rec.password_hash) {
     showModal('login', name);
     const handler = async () => {
@@ -292,7 +282,6 @@ saveNameBtn.addEventListener('click', async () => {
         loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
         usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
         await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: fresh.password_hash });
-        await updateMessagesUsername(oldLoggedAs, name);
         closeModal(); showError('Logged in as ' + name); await loadMessages();
       } else showError('Wrong password', true);
     };
@@ -313,7 +302,6 @@ saveNameBtn.addEventListener('click', async () => {
       await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: h });
       loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
       usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
-      await updateMessagesUsername(oldLoggedAs, name);
       closeModal(); showError('Password set and claimed: ' + name); await loadMessages();
     } catch (e) { console.error(e); showError('Failed to set password'); }
   };
@@ -324,7 +312,6 @@ saveNameBtn.addEventListener('click', async () => {
     await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: null });
     loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
     usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
-    await updateMessagesUsername(oldLoggedAs, name);
     closeModal(); showError('Claimed: ' + name); await loadMessages();
   };
   setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler;
@@ -335,7 +322,6 @@ passwordBtn.addEventListener('click', async () => {
   if (!name) return showError('Enter or select username first');
   usernameEl.value = name;
   const rec = await getUserByUsername(name);
-  const oldLoggedAs = loggedAs;
   if (rec && rec.password_hash) {
     if (loggedAs && loggedAs === name) {
       showModal('change', name);
@@ -366,7 +352,6 @@ passwordBtn.addEventListener('click', async () => {
         loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
         usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
         await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: fresh.password_hash });
-        await updateMessagesUsername(oldLoggedAs, name);
         closeModal(); showError('Logged in as ' + name); await loadMessages();
       } else showError('Wrong password', true);
     };
@@ -384,7 +369,6 @@ passwordBtn.addEventListener('click', async () => {
     await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: h });
     loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
     usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
-    await updateMessagesUsername(oldLoggedAs, name);
     closeModal(); showError('Password set and claimed'); await loadMessages();
   };
   setSaveBtn.onclick = null; setSaveBtn.onclick = setHandler2;
@@ -394,7 +378,6 @@ passwordBtn.addEventListener('click', async () => {
     await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: null });
     loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs);
     usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name;
-    await updateMessagesUsername(oldLoggedAs, name);
     closeModal(); showError('Claimed ' + name); await loadMessages();
   };
   setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler2;
