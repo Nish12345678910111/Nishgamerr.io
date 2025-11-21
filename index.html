@@ -179,7 +179,7 @@ function renderRow(row, isSending = false) {
   if (isSending) wrapper.dataset.sending = 'true';
   const ownedByDevice = row.device_id && String(row.device_id) === String(deviceId);
   const ownedByLogin = loggedAs && row.username && String(row.username) === String(loggedAs);
-  const isMine = ownedByDevice || ownedByLogin;
+  const isMine = loggedAs ? ownedByLogin : ownedByDevice;
   wrapper.classList.add(isMine ? 'my-message' : 'other-message');
   const bubble = document.createElement('div'); bubble.className = 'msg-content-bubble';
   const u = document.createElement('div'); u.className = 'username'; u.textContent = row.username || 'Guest';
