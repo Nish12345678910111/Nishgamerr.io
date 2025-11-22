@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>modern chat by Nishgamerr (GH Pages)</title>
+<title>modern chat by Nishgamerr (Full)</title>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
 <style>
   body{background:#071127;color:#e6eef8;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;display:flex;justify-content:center;padding:18px}
@@ -47,6 +47,8 @@
     .del1{width:16px;height:16px;font-size:.7rem}
     .card{width:95%}
   }
+  /* small debug area */
+  #pushDebug{font-size:12px;color:#9aa3b2;margin-top:6px}
 </style>
 </head>
 <body>
@@ -74,6 +76,8 @@
       <button id="autoScrollBtn" class="smallBtn">Auto Scroll: ON</button>
       <button id="deleteAllBtn" class="smallBtn">Delete All Mine</button>
       <button id="passwordBtn" class="smallBtn">Password</button>
+      <button id="subscribePushBtn" class="smallBtn">Enable Push</button>
+      <span id="pushDebug"></span>
     </div>
     <div id="errorBox"></div>
   </div>
@@ -113,7 +117,7 @@ const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_OQbzgO3ZE6-6qDl1YT_fXA_LA5aM-f0';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } });
 
-/* === CONFIG - your VAPID public key (you provided) === */
+/* === VAPID public key you provided (public only) === */
 const vapidPublicKey = 'BPJG-6mbPalbPLeZtb7gynNxIVp7pQlTgYonx5aB2zJWoxvuRo18c9ZuTU5ipKePId0Pa8jdKdPpAsqMUMVL10w';
 
 /* === DOM === */
@@ -128,6 +132,9 @@ const messageInput = document.getElementById('messageInput');
 const errorBox = document.getElementById('errorBox');
 const dbDot = document.getElementById('dbDot');
 const passwordBtn = document.getElementById('passwordBtn');
+const subscribePushBtn = document.getElementById('subscribePushBtn');
+const pushDebug = document.getElementById('pushDebug');
+
 const modal = document.getElementById('modal');
 const modalTitle = document.getElementById('modalTitle');
 const modalMsg = document.getElementById('modalMsg');
@@ -173,26 +180,35 @@ function urlBase64ToUint8Array(base64String) {
 
 /* === SERVICE WORKER + PUSH SUBSCRIPTION (registers /service-worker.js) === */
 async function initNotifications() {
-  if (!("Notification" in window)) return;
+  if (!("Notification" in window)) { pushDebug.textContent = 'Notifications not supported'; return; }
   if (notificationPermission === 'default') {
     notificationPermission = await Notification.requestPermission();
   }
   if (notificationPermission === 'granted') {
     const currentUser = loggedAs || normName(usernameEl.value) || null;
     const registration = await registerAndSubscribe(currentUser);
-    if (registration) showError('Notifications enabled', false);
+    if (registration) {
+      pushDebug.textContent = 'Push: subscribed';
+      showError('Notifications enabled!', false);
+    }
   } else if (notificationPermission === 'denied') {
+    pushDebug.textContent = 'Push: denied';
     showError('Notifications denied. Enable in browser settings.', true);
   }
 }
 
 async function registerAndSubscribe(username) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    pushDebug.textContent = 'Push unsupported in this browser';
     console.warn('Push not supported');
     return null;
   }
   try {
+    // Register service worker (must be at root '/service-worker.js')
     const reg = await navigator.serviceWorker.register('/service-worker.js');
+    // ensure it's ready
+    await navigator.serviceWorker.ready;
+    // get or create subscription
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({
@@ -200,25 +216,32 @@ async function registerAndSubscribe(username) {
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       });
     }
-    await supabase.from('push_subscriptions').upsert([{ username: username || 'Guest', device_id: deviceId, subscription: sub.toJSON() }]);
-    console.log('Subscribed to push');
+    // Save to Supabase
+    const { data, error } = await supabase.from('push_subscriptions').upsert([
+      { username: username || 'Guest', device_id: deviceId, subscription: sub.toJSON() }
+    ]);
+    if (error) {
+      console.warn('Subscription upsert error:', error);
+      pushDebug.textContent = 'Push: subscribed locally (save failed)';
+    } else {
+      pushDebug.textContent = 'Push: subscribed and saved';
+    }
     return reg;
-  } catch (e) { console.error('subscribe failed', e); showError('Push subscribe failed', true); return null; }
+  } catch (error) {
+    console.error('Error subscribing to push:', error);
+    pushDebug.textContent = 'Push: subscribe failed';
+    showError('Push subscribe failed — check console', true);
+    return null;
+  }
 }
+subscribePushBtn.addEventListener('click', async () => {
+  const currentUser = normName(usernameEl.value) || loggedAs || 'Guest';
+  usernameEl.value = currentUser;
+  currentUsernameLabel.textContent = 'Username: ' + currentUser;
+  await initNotifications();
+});
 
-function showNotification(username, message) {
-  if (Notification.permission !== 'granted') return;
-  try {
-    new Notification(`New message from ${username}`, {
-      body: message,
-      icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42NDE1OCAyIDYgNC42NDE1OCA2IDhWMTZDMCAxOS4zNTY5IDMuNjQzMDUgMjMgNy40MzYxNCAyM0gxNkM4LjM1NDM1IDIzIDExLjY0MzYgMTkuMzU2OSAxMiAxNlY4QzEyIDYuNjQxNTggOS4zNTg0MiAyIDggMloiIGZpbGw9IiM0RDQ1RDUiLz4KPC9zdmc+Cg==',
-      tag: 'chat-message',
-      requireInteraction: false
-    });
-  } catch(e){ console.warn('notif error', e); }
-}
-
-/* === RENDER & DATA FUNCTIONS (unchanged) === */
+/* === RENDER MESSAGE === */
 function renderRow(row, isSending = false) {
   if (!row) return;
   const id = row.id ?? null;
@@ -259,7 +282,10 @@ function renderRow(row, isSending = false) {
             .or(orClause);
           if (error) throw error;
           messageWrapper.remove();
-        } catch (err) { console.error(err); showError('Delete failed'); }
+        } catch (err) {
+          console.error(err);
+          showError('Delete failed');
+        }
       };
       footer.appendChild(del);
     }
@@ -274,6 +300,7 @@ function renderRow(row, isSending = false) {
   if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
+/* === LOAD MESSAGES === */
 async function loadMessages() {
   if (!navigator.onLine) { showError('Network offline — cannot load messages'); return; }
   try {
@@ -284,15 +311,15 @@ async function loadMessages() {
   } catch (e) { console.error(e); showError('Load failed'); }
 }
 
+/* === USER IP HELPERS === */
 async function getUserByUsername(name) {
   if (!name) return null;
   try {
-    const { data, error } = await supabase.from('user_ips').select('ip_address, password_hash, username, current_username, device_id').or(`username.eq.${name},current_username.eq.${name}`).limit(1);
+    const { data, error } = await supabase.from('user_ips').select('ip_address, password_hash, username, current_username').or(`username.eq.${name},current_username.eq.${name}`).limit(1);
     if (error) { console.warn(error); return null; }
     return data?.[0] ?? null;
   } catch (e) { console.warn(e); return null; }
 }
-
 async function upsertUserIp({ username, ip, device_ip = null, device_id = null, password_hash = undefined }) {
   if (!username || !ip) return;
   try {
@@ -314,7 +341,7 @@ async function upsertUserIp({ username, ip, device_ip = null, device_id = null, 
   } catch (e) { console.error('upsert error', e); showError('Failed to log IP address.', true); }
 }
 
-/* === Modal & Save name / Password flows === */
+/* === MODAL === */
 function showModal(mode, username) {
   modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false');
   modalTitle.textContent = mode === 'login' ? `Login — ${username}` : mode === 'set' ? `Set password — ${username}` : `Change password — ${username}`;
@@ -328,6 +355,7 @@ function showModal(mode, username) {
 }
 function closeModal() { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); modal.dataset.username = modal.dataset.mode = ''; }
 
+/* === SAVE NAME & PASSWORD === */
 saveNameBtn.addEventListener('click', async () => {
   const raw = usernameEl.value || '';
   const name = normName(raw);
@@ -381,7 +409,6 @@ saveNameBtn.addEventListener('click', async () => {
   };
   setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler;
 });
-
 passwordBtn.addEventListener('click', async () => {
   const raw = usernameEl.value || '';
   const name = normName(raw) || loggedAs;
@@ -449,7 +476,7 @@ passwordBtn.addEventListener('click', async () => {
   setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler2;
 });
 
-/* === SEND MESSAGE (includes calling Edge Function to trigger pushes) === */
+/* === SEND MESSAGE === */
 async function sendMessage() {
   const txt = messageInput.value.trim();
   if (!txt) return;
@@ -482,7 +509,6 @@ async function sendMessage() {
         else console.log('Push function result', pushResult);
       } catch (invokeErr) { console.warn('Invoke error', invokeErr); }
 
-      // Update UI
       const tempEl = chatEl.querySelector(`[data-client-id='${clientId}']`);
       if (tempEl) {
         tempEl.dataset.sending = 'false';
@@ -506,8 +532,8 @@ async function sendMessage() {
   })();
 }
 
-/* === Delete all my messages === */
-deleteAllBtn.addEventListener('click', async () => {
+/* === DELETE ALL MINE === */
+deleteAllBtn && deleteAllBtn.addEventListener && deleteAllBtn.addEventListener('click', async () => {
   const currentName = normName(usernameEl.value) || 'Guest';
   if (!currentName || currentName === 'Guest') { showError('Save a username first to delete messages.'); return; }
   if (!confirm(`Delete ALL messages posted by username "${currentName}"?`)) return;
@@ -520,7 +546,7 @@ deleteAllBtn.addEventListener('click', async () => {
   } catch (e) { console.error(e); showError('Delete-all failed'); }
 });
 
-/* === DB probe & realtime subscribe === */
+/* === DB PROBE === */
 async function probeConnection() {
   if (!navigator.onLine) { dbDot.style.background = '#dc2626'; dbDot.title = 'Network offline'; showError('Network offline', true); return; }
   try {
@@ -535,6 +561,7 @@ async function probeConnection() {
   } catch (e) { dbDot.style.background = '#dc2626'; dbDot.title = 'Cannot reach server API'; showError('Cannot reach server API', true); }
 }
 
+/* === REALTIME === */
 let channel = null;
 async function subscribeRealtime() {
   try {
@@ -545,7 +572,10 @@ async function subscribeRealtime() {
         if (row.content === undefined && row.message !== undefined) row.content = row.message;
         const currentUsername = loggedAs || normName(usernameEl.value) || 'Guest';
         if (row.username !== currentUsername) {
-          showNotification(row.username || 'Guest', row.content || row.message || '');
+          // Show a small notification via Notification API if permitted (and SW can show push when closed)
+          if (Notification.permission === 'granted') {
+            try { new Notification(`New message from ${row.username || 'Guest'}`, { body: row.content || row.message || '' }); } catch(e) {}
+          }
         }
         if (row.client_id && String(row.device_id) === String(deviceId)) {
           const tmp = chatEl.querySelector(`[data-client-id='${row.client_id}']`);
@@ -610,4 +640,4 @@ usernameEl.addEventListener('input', e => { usernameEl.value = normName(username
 })();
 </script>
 </body>
-  </html>
+</html>
