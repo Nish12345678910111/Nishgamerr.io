@@ -68,14 +68,16 @@
         width: 100%;
       }
 
+      /* Make chat bubble slightly smaller as requested */
       .msg-content-bubble {
-        padding: 8px 12px;
+        padding: 6px 10px; /* reduced from 8px 12px */
         border-radius: 12px;
-        max-width: 80%;
+        max-width: 70%; /* slightly smaller width */
         display: flex;
         flex-direction: column;
         gap: 4px;
         position: relative;
+        font-size: 0.95rem; /* slightly smaller text */
       }
 
       .my-message {
@@ -115,7 +117,7 @@
         color: #e6eef8;
         white-space: pre-wrap;
         line-height: 1.35;
-        font-size: 0.98rem;
+        font-size: 0.95rem;
         word-break: break-word;
       }
 
@@ -158,6 +160,35 @@
 
       .del1:hover {
         background: #dc2626;
+      }
+
+      /* COPY BUTTON - styled to fit existing GUI (keeps overall look consistent) */
+      .copyBtn {
+        width: 18px;
+        height: 18px;
+        line-height: 1;
+        border-radius: 50%;
+        border: none;
+        background: #2563eb;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-weight: 700;
+        font-size: 0.7rem;
+        transition: background 0.15s;
+      }
+      .copyBtn:hover {
+        background: #1e40af;
+      }
+
+      /* Button stack: places copy above delete in a vertical column */
+      .btnStack {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
 
       .pending-status {
@@ -650,6 +681,35 @@
           ts.textContent = fmtTime(row.created_at ?? new Date().toISOString());
           footer.appendChild(ts);
 
+          // Button stack container: copy above delete
+          const btnStack = document.createElement('div');
+          btnStack.className = 'btnStack';
+
+          // COPY BUTTON (visible to everyone) - copies message content
+          const copy = document.createElement('button');
+          copy.className = 'copyBtn';
+          copy.title = 'Copy message';
+          copy.setAttribute('aria-label', 'Copy message');
+          copy.textContent = '⧉';
+          copy.onclick = (e) => {
+            e.stopPropagation();
+            const textToCopy = t.textContent || '';
+            if (!textToCopy) {
+              showError('Nothing to copy');
+              return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(textToCopy).then(
+                () => showError('Copied to clipboard'),
+                (err) => fallbackCopyTextToClipboard(textToCopy)
+              );
+            } else {
+              fallbackCopyTextToClipboard(textToCopy);
+            }
+          };
+          btnStack.appendChild(copy);
+
+          // Only append delete if owner (delete remains under copy)
           if (ownedByDevice || ownedByLogin) {
             const del = document.createElement('button');
             del.className = 'del1';
@@ -673,13 +733,40 @@
                 showError('Delete failed');
               }
             };
-            footer.appendChild(del);
+            btnStack.appendChild(del);
           }
+
+          // Append stack to footer (keeps visual order: copy above delete)
+          footer.appendChild(btnStack);
         } else {
           const pending = document.createElement('div');
           pending.className = 'pending-status';
           pending.textContent = 'Sending...';
           footer.appendChild(pending);
+
+          // For sending state also add a copy button (copies current text)
+          const copyPending = document.createElement('button');
+          copyPending.className = 'copyBtn';
+          copyPending.title = 'Copy message';
+          copyPending.setAttribute('aria-label', 'Copy message');
+          copyPending.textContent = '⧉';
+          copyPending.onclick = (e) => {
+            e.stopPropagation();
+            const textToCopy = t.textContent || '';
+            if (!textToCopy) {
+              showError('Nothing to copy');
+              return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(textToCopy).then(
+                () => showError('Copied to clipboard'),
+                () => fallbackCopyTextToClipboard(textToCopy)
+              );
+            } else {
+              fallbackCopyTextToClipboard(textToCopy);
+            }
+          };
+          footer.appendChild(copyPending);
         }
 
         if (isMine && row.username !== 'Guest') u.style.display = 'none';
@@ -688,6 +775,35 @@
         chatEl.appendChild(wrapper);
 
         if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
+      }
+
+      // Fallback for older browsers or failed navigator.clipboard
+      function fallbackCopyTextToClipboard(text) {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'absolute';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          const selected =
+            document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : null;
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            showError('Copied to clipboard');
+          } catch (err) {
+            showError('Copy failed');
+          }
+          document.body.removeChild(textarea);
+          if (selected) {
+            document.getSelection().removeAllRanges();
+            document.getSelection().addRange(selected);
+          }
+        } catch (e) {
+          console.error('fallback copy failed', e);
+          showError('Copy failed');
+        }
       }
 
       /* === LOAD MESSAGES === */
