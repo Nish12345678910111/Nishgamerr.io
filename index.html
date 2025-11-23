@@ -1,1 +1,1279 @@
-<!doctype html> <html lang="en"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>modern chat by Nishgamerr</title> <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script> <style> body{background:#071127;color:#e6eef8;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;display:flex;justify-content:center;padding:18px} .wrap{width:100%;max-width:720px} h1,h2{margin:0 0 8px 0;color:#60a5fa} .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap} #currentUsername{color:#94a3b8;font-size:0.95rem;margin-right:8px} #username{background:#0f1724;color:#e6eef8;border:1px solid #1f2937;padding:6px 8px;border-radius:6px;width:48%;max-width:320px} #chat{background:#071127;border-radius:8px;padding:12px;height:420px;overflow-y:auto;border:1px solid #132033} .message{display:flex;margin-bottom:10px;opacity:1;transition:opacity .5s;width:100%} .msg-content-bubble{padding:8px 12px;border-radius:12px;max-width:80%;display:flex;flex-direction:column;gap:4px;position:relative} .my-message{justify-content:flex-end} .other-message{justify-content:flex-start} .my-message .msg-content-bubble{background:#1d4ed8;border-bottom-right-radius:2px} .other-message .msg-content-bubble{background:#1f2937;border-bottom-left-radius:2px} .message[data-sending="true"] .msg-content-bubble{opacity:.7} .username{color:#d1d5db;font-weight:700;margin-bottom:4px;font-size:.85rem} .my-message .username{color:#e0f2f1} .text{color:#e6eef8;white-space:pre-wrap;line-height:1.35;font-size:.98rem;word-break:break-word} .bubble-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:4px;font-size:.82rem} .ts{color:#d1ddff;font-size:.82rem;white-space:nowrap} .other-message .ts{color:#94a3b8} .del1{width:18px;height:18px;line-height:1;border-radius:50%;border:none;background:#ef4444;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-weight:700;font-size:.8rem;transition:background .2s} .del1:hover{background:#dc2626} .pending-status{color:#fbbf24;font-size:.82rem;white-space:nowrap;margin-left:auto;margin-top:4px} #messageArea{display:flex;flex-direction:column;gap:5px;margin-top:10px} #controls{display:flex;gap:8px} #messageInput{flex:1;padding:10px;border-radius:8px;background:#0f1724;color:#e6eef8;border:1px solid #1f2937} #sendBtn{padding:10px 14px;background:#2563eb;border:none;border-radius:8px;color:#fff;cursor:pointer} .smallBtn{padding:6px 8px;border-radius:6px;border:none;background:#1f2937;color:#e6eef8;cursor:pointer;font-size:.85rem} #controls2{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap} #errorBox{margin-top:8px;color:#fecaca;min-height:1.2em;white-space:pre-wrap} #dbDot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-left:8px;background:#dc2626} #modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:60} .card{background:#071127;padding:12px;border-radius:8px;border:1px solid #132033;width:420px;max-width:95%;color:#e6eef8} .row{display:flex;flex-direction:column;gap:6px;margin-bottom:8px} .actions{display:flex;gap:8px;justify-content:flex-end} #inspectOverlay{ position:fixed;top:0;left:0;width:100vw;height:100vh; background:rgba(0,0,0,0.02);z-index:2147483647; display:none;pointer-events:none; user-select:none; } #inspectOverlay.show{display:block} @media (max-width:480px){ #chat{height:285px} #username{width:60%} .del1{width:16px;height:16px;font-size:.7rem} .card{width:95%} } </style> </head> <body> <div class="wrap"> <div style="display:flex;justify-content:space-between;align-items:center;"> <h2>modern chat by Nishgamerr</h2> <div><span id="dbDot" title="DB status"></span></div> </div> <div class="top"> <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"> <span id="currentUsername">Username: Guest</span> <input id="username" placeholder="Enter username" autocomplete="off" /> <button id="saveName" class="smallBtn">Save</button> </div> <div style="color:#94a3b8">Old GUI & Realtime</div> </div> <div id="chat" role="log" aria-live="polite"></div> <div id="messageArea"> <div id="controls"> <input id="messageInput" placeholder="Type a message" /> <button id="sendBtn">Send</button> </div> </div> <div id="controls2"> <button id="autoScrollBtn" class="smallBtn">Auto Scroll: ON</button> <button id="deleteAllBtn" class="smallBtn">Delete All Mine</button> <button id="passwordBtn" class="smallBtn">Password</button> </div> <div id="errorBox"></div> </div> <!-- Modal --> <div id="modal" aria-hidden="true"> <div class="card" role="dialog" aria-modal="true"> <div style="display:flex;justify-content:space-between;align-items:center;"> <strong id="modalTitle">Password</strong> <button id="modalClose" class="smallBtn">Close</button> </div> <div style="margin-top:8px;"> <div id="modalMsg" style="color:#9aa3b2;margin-bottom:8px"></div> <div id="loginForm" style="display:none;"> <div class="row"><label style="color:#9aa3b2">Password</label> <input id="loginPw" type="password" placeholder="Enter password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="actions"><button id="loginBtn" class="smallBtn">Login</button></div> </div> <div id="setForm" style="display:none;"> <div class="row"><label style="color:#9aa3b2">New password</label><input id="setPw" type="password" placeholder="New password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="row"><label style="color:#9aa3b2">Confirm password</label><input id="setPwConfirm" type="password" placeholder="Confirm password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="actions"><button id="setSaveBtn" class="smallBtn">Save</button><button id="setSkipBtn" class="smallBtn">Skip (claim without password)</button></div> </div> <div id="changeForm" style="display:none;"> <div class="row"><label style="color:#9aa3b2">Current password</label><input id="chgCurrent" type="password" placeholder="Current password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="row"><label style="color:#9aa3b2">New password</label><input id="chgNew" type="password" placeholder="New password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="row"><label style="color:#9aa3b2">Confirm new</label><input id="chgConfirm" type="password" placeholder="Confirm new" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8"/></div> <div class="actions"><button id="chgSaveBtn" class="smallBtn">Change</button></div> </div> </div> </div> </div> <!-- Fake Inspect Overlay --> <div id="inspectOverlay"> <pre id="sourceCode" style="position:fixed;top:0;right:0;bottom:0;width:50%;background:#111;color:#0f0;font-family:monospace;font-size:12px;overflow:auto;padding:10px;pointer-events:auto;user-select:text;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;"> </pre> </div> <script type="module"> import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'; const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co'; const SUPABASE_ANON_KEY = 'sb_publishable_OQbzgO3ZE6-6qDl1YT_fXA_LA5aM-f0'; const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { timeout: 15000 } }); /* === DOM ELEMENTS === */ const chatEl = document.getElementById('chat'); const usernameEl = document.getElementById('username'); const currentUsernameLabel = document.getElementById('currentUsername'); const saveNameBtn = document.getElementById('saveName'); const deleteAllBtn = document.getElementById('deleteAllBtn'); const autoScrollBtn = document.getElementById('autoScrollBtn'); const sendBtn = document.getElementById('sendBtn'); const messageInput = document.getElementById('messageInput'); const errorBox = document.getElementById('errorBox'); const dbDot = document.getElementById('dbDot'); const passwordBtn = document.getElementById('passwordBtn'); const modal = document.getElementById('modal'); const modalTitle = document.getElementById('modalTitle'); const modalMsg = document.getElementById('modalMsg'); const loginForm = document.getElementById('loginForm'); const setForm = document.getElementById('setForm'); const changeForm = document.getElementById('changeForm'); const loginPw = document.getElementById('loginPw'); const loginBtn = document.getElementById('loginBtn'); const setPw = document.getElementById('setPw'); const setPwConfirm = document.getElementById('setPwConfirm'); const setSaveBtn = document.getElementById('setSaveBtn'); const setSkipBtn = document.getElementById('setSkipBtn'); const chgCurrent = document.getElementById('chgCurrent'); const chgNew = document.getElementById('chgNew'); const chgConfirm = document.getElementById('chgConfirm'); const chgSaveBtn = document.getElementById('chgSaveBtn'); const modalClose = document.getElementById('modalClose'); const inspectOverlay = document.getElementById('inspectOverlay'); const sourceCodeEl = document.getElementById('sourceCode'); /* === STATE === */ const DEVICE_KEY = 'chat_device_id_v5'; let deviceId = localStorage.getItem(DEVICE_KEY); if (!deviceId) { deviceId = crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, deviceId); } let autoScroll = true; autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`; let loggedAs = localStorage.getItem('chat_logged_as') || null; let cachedPublicIp = null; let notificationPermission = Notification.permission || 'default'; const vapidPublicKey = 'BLt15oea4JFaaS1yTr1ujZESXFKiveemS91tMetMUm6F6RtHZyAMllXvbquKc2X_NZe2hPgen_pLjyrhiuMIulk'; /* === HELPERS === */ function showError(msg, persist = false) { errorBox.textContent = msg || ''; if (msg && !persist) setTimeout(() => { if (errorBox.textContent === msg) errorBox.textContent = ''; }, 4000); } function fmtTime(iso) { try { return new Date(iso).toLocaleString(undefined, { year:'numeric', month:'numeric', day:'numeric', hour:'numeric', minute:'numeric', second:'numeric', hour12:true }); } catch { return '??:??'; } } async function sha256hex(str) { const enc = new TextEncoder(); const data = enc.encode(str); const h = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join(''); } async function getPublicIp() { try { const r = await fetch('https://api.ipify.org?format=json'); const j = await r.json(); return j.ip || null; } catch { return null; } } function normName(n) { return String(n||'').replace(/\s+/g, ' ').trim(); } function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding) .replace(/-/g, '+') .replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; } async function initNotifications() { if (!("Notification" in window)) return; if (notificationPermission === 'default') { notificationPermission = await Notification.requestPermission(); if (notificationPermission === 'granted') { showError('Notifications enabled! You will be notified of new messages even when browser is closed.', false); const currentUser = loggedAs || normName(usernameEl.value) || null; if (currentUser) { await subscribeToPush(currentUser); } } else if (notificationPermission === 'denied') { showError('Notifications denied. You can enable them in browser settings.', true); } } } function showNotification(username, message) { if (notificationPermission !== 'granted') return; new Notification(`New message from ${username}`, { body: message, icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42NDE1OCAyIDYgNC42NDE1OCA2IDhWMTZDMCAxOS4zNTY5IDMuNjQzMDUgMjMgNy40MzYxNCAyM0gxNkM4LjM1NDM1IDIzIDExLjY0MzYgMTkuMzU2OSAxMiAxNlY4QzEyIDYuNjQxNTggOS4zNTg0MiAyIDggMloiIGZpbGw9IiM0RDQ1RDUiLz4KPC9zdmc+Cg==', tag: 'chat-message', requireInteraction: false }); } async function subscribeToPush(username) { if (notificationPermission !== 'granted') return; if (!('serviceWorker' in navigator) || !('PushManager' in window)) { console.warn('Push notifications not supported'); return; } try { // Register Service Worker (inline for simplicity) const swCode = ` self.addEventListener('push', function(event) { let data = { title: 'New Chat Message', body: 'You have a new message', url: '/' }; if (event.data) { data = event.data.json(); } const options = { body: data.body, icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42NDE1OCAyIDYgNC42NDE1OCA2IDhWMTZDMCAxOS4zNTY5IDMuNjQzMDUgMjMgNy40MzYxNCAyM0gxNkM4LjM1NDM1IDIzIDExLjY0MzYgMTkuMzU2OSAxMiAxNlY4QzEyIDYuNjQxNTggOS4zNTg0MiAyIDggMloiIGZpbGw9IiM0RDQ1RDUiLz4KPC9zdmc+Cg==', badge: '/icon-192x192.png', // Optional, add if you have one tag: 'chat-notification', data: { url: data.url || '/' } }; event.waitUntil( self.registration.showNotification(data.title, options) ); }); self.addEventListener('notificationclick', function(event) { event.notification.close(); event.waitUntil( clients.openWindow(event.notification.data?.url || '/') ); }); `; const blob = new Blob([swCode], { type: 'application/javascript' }); const swUrl = URL.createObjectURL(blob); const registration = await navigator.serviceWorker.register(swUrl, { scope: './' }); const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) }); // Upsert to Supabase const { error } = await supabase.from('push_subscriptions').upsert([ { username: username, device_id: deviceId, subscription: subscription.toJSON() } ]); if (error) console.error('Subscription upsert error:', error); else console.log('Push subscription successful'); URL.revokeObjectURL(swUrl); // Clean up } catch (error) { console.error('Error subscribing to push:', error); showError('Failed to subscribe to push notifications. Check console for details.', true); } } /* === RENDER MESSAGE === */ function renderRow(row, isSending = false) { if (!row) return; const id = row.id ?? null; const clientId = row.client_id ?? null; if ((id && chatEl.querySelector(`[data-id='${id}']`)) || (clientId && chatEl.querySelector(`[data-client-id='${clientId}']`))) return; const wrapper = document.createElement('div'); wrapper.className = 'message'; if (id) wrapper.dataset.id = id; if (clientId) wrapper.dataset.clientId = clientId; if (isSending) wrapper.dataset.sending = 'true'; const ownedByDevice = row.device_id && String(row.device_id) === String(deviceId); const ownedByLogin = loggedAs && row.username && String(row.username) === String(loggedAs); const isMine = ownedByDevice || ownedByLogin; wrapper.classList.add(isMine ? 'my-message' : 'other-message'); const bubble = document.createElement('div'); bubble.className = 'msg-content-bubble'; const u = document.createElement('div'); u.className = 'username'; u.textContent = row.username || 'Guest'; const t = document.createElement('div'); t.className = 'text'; t.textContent = row.content ?? row.message ?? ''; bubble.appendChild(u); bubble.appendChild(t); const footer = document.createElement('div'); footer.className = 'bubble-footer'; if (!isSending) { const ts = document.createElement('span'); ts.className = 'ts'; ts.textContent = fmtTime(row.created_at ?? new Date().toISOString()); footer.appendChild(ts); if (ownedByDevice || ownedByLogin) { const del = document.createElement('button'); del.className = 'del1'; del.textContent = '×'; del.title = 'Delete message'; del.onclick = async e => { e.stopPropagation(); if (!id) return; const messageWrapper = del.closest('.message'); try { let conditions = []; if (deviceId) conditions.push(`device_id.eq.${deviceId}`); if (loggedAs) conditions.push(`username.eq.${loggedAs}`); if (conditions.length === 0) throw new Error('No ownership'); const orClause = conditions.join(','); const { error } = await supabase .from('messages') .delete() .eq('id', id) .or(orClause); if (error) throw error; messageWrapper.remove(); } catch (err) { console.error(err); showError('Delete failed'); } }; footer.appendChild(del); } } else { const pending = document.createElement('div'); pending.className = 'pending-status'; pending.textContent = 'Sending...'; footer.appendChild(pending); } if (isMine && row.username !== 'Guest') u.style.display = 'none'; if (footer.children.length) bubble.appendChild(footer); wrapper.appendChild(bubble); chatEl.appendChild(wrapper); if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight; } /* === LOAD MESSAGES === */ async function loadMessages() { if (!navigator.onLine) { showError('Network offline — cannot load messages'); return; } try { const { data, error } = await supabase.from('messages').select('id, username, content, message, device_id, created_at').order('created_at', { ascending: true }); if (error) { showError('Failed to load messages: ' + (error.message||error.code), true); console.error(error); return; } chatEl.innerHTML = ''; (data||[]).forEach(r => { if (r.content === undefined && r.message !== undefined) r.content = r.message; renderRow(r); }); } catch (e) { console.error(e); showError('Load failed'); } } /* === USER IP HELPERS === */ async function getUserByUsername(name) { if (!name) return null; try { const { data, error } = await supabase.from('user_ips').select('ip_address, password_hash, username, current_username').or(`username.eq.${name},current_username.eq.${name}`).limit(1); if (error) { console.warn(error); return null; } return data?.[0] ?? null; } catch (e) { console.warn(e); return null; } } async function upsertUserIp({ username, ip, device_ip = null, device_id = null, password_hash = undefined }) { if (!username || !ip) return; try { const { data: existing, error: selErr } = await supabase.from('user_ips').select('ip_address, password_hash').eq('username', username).limit(1); if (selErr) { console.warn('select error', selErr); return; } const payload = { username, current_username: username, device_ip, device_id: device_id || deviceId, updated_at: new Date().toISOString() }; const exists = existing && existing.length; if (exists) { let ips = Array.isArray(existing[0].ip_address) ? existing[0].ip_address : (existing[0].ip_address ? [existing[0].ip_address] : []); if (!ips.includes(ip)) ips.push(ip); const upd = { ...payload, ip_address: ips, password_hash: password_hash !== undefined ? password_hash : existing[0].password_hash }; const { error } = await supabase.from('user_ips').update(upd).eq('username', username); if (error) console.error('update error', error); } else { const ins = { ...payload, ip_address: [ip], password_hash }; const { error } = await supabase.from('user_ips').insert([ins]); if (error) console.error('insert error', error); } } catch (e) { console.error('upsert error', e); showError('Failed to log IP address.', true); } } /* === MODAL === */ function showModal(mode, username) { modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); modalTitle.textContent = mode === 'login' ? `Login — ${username}` : mode === 'set' ? `Set password — ${username}` : `Change password — ${username}`; modalMsg.textContent = mode === 'login' ? 'This username is protected. Enter password.' : mode === 'set' ? 'Set a password to protect this username or Skip to claim without password.' : 'Enter current password and new password.'; loginForm.style.display = mode === 'login' ? 'block' : 'none'; setForm.style.display = mode === 'set' ? 'block' : 'none'; changeForm.style.display = mode === 'change' ? 'block' : 'none'; loginPw.value = setPw.value = setPwConfirm.value = chgCurrent.value = chgNew.value = chgConfirm.value = ''; modal.dataset.username = username || ''; modal.dataset.mode = mode || ''; } function closeModal() { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); modal.dataset.username = modal.dataset.mode = ''; } /* === SAVE NAME & PASSWORD === */ saveNameBtn.addEventListener('click', async () => { const raw = usernameEl.value || ''; const name = normName(raw); if (!name) return showError('Enter username'); usernameEl.value = name; if (loggedAs && loggedAs === name) { currentUsernameLabel.textContent = 'Username: ' + name; localStorage.setItem('chatUsername', name); showError('Active: ' + name); await subscribeToPush(name); return; } const rec = await getUserByUsername(name); if (rec && rec.password_hash) { showModal('login', name); const handler = async () => { const pw = loginPw.value.trim(); if (!pw) return showError('Enter password'); const hash = await sha256hex(pw); const fresh = await getUserByUsername(name); if (!fresh || !fresh.password_hash) { showError('Password removed — retry'); closeModal(); return; } if (hash === fresh.password_hash) { loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: fresh.password_hash }); closeModal(); showError('Logged in as ' + name); await loadMessages(); await subscribeToPush(name); } else showError('Wrong password', true); }; loginBtn.onclick = null; loginBtn.onclick = handler; return; } showModal('set', name); const setHandler = async () => { const p = setPw.value.trim(), c = setPwConfirm.value.trim(); const fresh = await getUserByUsername(name); if (fresh && fresh.password_hash) { showError('A password was set while you were typing. Please login.', true); closeModal(); return; } if (!p) return showError('Enter a password or Skip to claim without password'); if (p !== c) return showError('Passwords do not match'); const h = await sha256hex(p); try { const { data: existing } = await supabase.from('user_ips').select('id,password_hash').or(`username.eq.${name},current_username.eq.${name}`).limit(1); if (existing?.[0]?.password_hash) { showError('Another user set a password — please login', true); closeModal(); return; } await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: h }); loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; closeModal(); showError('Password set and claimed: ' + name); await loadMessages(); await subscribeToPush(name); } catch (e) { console.error(e); showError('Failed to set password'); } }; setSaveBtn.onclick = null; setSaveBtn.onclick = setHandler; const skipHandler = async () => { const fresh = await getUserByUsername(name); if (fresh && fresh.password_hash) { showError('A password exists now — please login', true); closeModal(); return; } await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: null }); loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; closeModal(); showError('Claimed: ' + name); await loadMessages(); await subscribeToPush(name); }; setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler; }); passwordBtn.addEventListener('click', async () => { const raw = usernameEl.value || ''; const name = normName(raw) || loggedAs; if (!name) return showError('Enter or select username first'); usernameEl.value = name; const rec = await getUserByUsername(name); if (rec && rec.password_hash) { if (loggedAs && loggedAs === name) { showModal('change', name); const changeHandler = async () => { const cur = chgCurrent.value.trim(), nw = chgNew.value.trim(), conf = chgConfirm.value.trim(); const fresh = await getUserByUsername(name); if (!fresh || !fresh.password_hash) { showError('Password missing; cannot change.'); closeModal(); return; } if (!cur || !nw) return showError('Fill both fields'); if (nw !== conf) return showError('New passwords do not match'); const curHash = await sha256hex(cur); if (curHash !== fresh.password_hash) return showError('Current password wrong'); const newHash = await sha256hex(nw); const { error } = await supabase.from('user_ips').update({ password_hash: newHash }).eq('username', name); if (error) { console.error(error); showError('Change failed'); return; } closeModal(); showError('Password changed'); }; chgSaveBtn.onclick = null; chgSaveBtn.onclick = changeHandler; return; } showModal('login', name); const loginHandler = async () => { const pw = loginPw.value.trim(); if (!pw) return showError('Enter password'); const hash = await sha256hex(pw); const fresh = await getUserByUsername(name); if (!fresh || !fresh.password_hash) { showError('Password removed; try again'); closeModal(); return; } if (hash === fresh.password_hash) { loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: fresh.password_hash }); closeModal(); showError('Logged in as ' + name); await loadMessages(); await subscribeToPush(name); } else showError('Wrong password', true); }; loginBtn.onclick = null; loginBtn.onclick = loginHandler; return; } showModal('set', name); const setHandler2 = async () => { const p = setPw.value.trim(), c = setPwConfirm.value.trim(); const fresh = await getUserByUsername(name); if (fresh && fresh.password_hash) { showError('A password exists now — please login', true); closeModal(); return; } if (!p) return showError('Enter new password or Skip'); if (p !== c) return showError('Passwords do not match'); const h = await sha256hex(p); await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: h }); loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; closeModal(); showError('Password set and claimed'); await loadMessages(); await subscribeToPush(name); }; setSaveBtn.onclick = null; setSaveBtn.onclick = setHandler2; const skipHandler2 = async () => { const fresh = await getUserByUsername(name); if (fresh && fresh.password_hash) { showError('A password exists now — please login', true); closeModal(); return; } await upsertUserIp({ username: name, ip: cachedPublicIp||('device-'+deviceId), device_id: deviceId, password_hash: null }); loggedAs = name; localStorage.setItem('chat_logged_as', loggedAs); usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; closeModal(); showError('Claimed ' + name); await loadMessages(); await subscribeToPush(name); }; setSkipBtn.onclick = null; setSkipBtn.onclick = skipHandler2; }); /* === SEND MESSAGE === */ async function sendMessage() { const txt = messageInput.value.trim(); if (!txt) return; if (!navigator.onLine) { showError('Network offline — cannot send'); return; } messageInput.value = ''; showError(''); const finalName = normName(usernameEl.value) || 'Guest'; const clientId = crypto.randomUUID(); const tempRow = { username: finalName, content: txt, device_id: deviceId, client_id: clientId, created_at: new Date().toISOString() }; renderRow(tempRow, true); (async () => { const ipToUse = cachedPublicIp || ('device-'+deviceId); try { const claimed = await getUserByUsername(finalName); const protectedName = claimed && claimed.password_hash && (!loggedAs || loggedAs !== finalName); if (protectedName) { showError('Username is protected. Login (Password) first to send.', true); throw new Error('protected'); } const ph = claimed ? claimed.password_hash : null; upsertUserIp({ username: finalName, ip: ipToUse, device_id: deviceId, password_hash: ph }).catch(() => {}); let { error } = await supabase.from('messages').insert([{ username: finalName, content: txt, device_id: deviceId, client_id: clientId }]); if (error && /column .*content .*does not exist/i.test(String(error.message||''))) { const { error: e2 } = await supabase.from('messages').insert([{ username: finalName, message: txt, device_id: deviceId, client_id: clientId }]); if (e2) throw e2; } else if (error) throw error; // Trigger push notifications to all other subscribed users via Edge Function try { const { data: pushResult, error: pushError } = await supabase.functions.invoke('send-chat-notification', { body: { username: finalName, content: txt, sender_username: finalName, sender_device: deviceId } }); if (pushError) { console.warn('Failed to trigger push notifications:', pushError); } else { console.log('Push notifications triggered successfully'); } } catch (invokeErr) { console.warn('Failed to invoke push notification function:', invokeErr); } // Update the temporary message with real data if needed const tempEl = chatEl.querySelector(`[data-client-id='${clientId}']`); if (tempEl) { tempEl.dataset.sending = 'false'; const pend = tempEl.querySelector('.pending-status'); if (pend) pend.remove(); } } catch (e) { console.error('Send error', e); let msg = 'Send failed: Unknown error. Try saving your username first.'; if (!navigator.onLine) msg = 'Send failed: Network offline'; else if (e && e.message) msg = 'Send failed: ' + e.message; showError(msg, true); const tempEl = chatEl.querySelector(`[data-client-id='${clientId}']`); if (tempEl) { tempEl.dataset.sending = 'false'; const pend = tempEl.querySelector('.pending-status'); if (pend) pend.textContent = 'Failed'; setTimeout(() => { tempEl.remove(); if (errorBox.textContent === msg) showError(''); }, 5000); } } })(); } /* === DELETE ALL MINE === */ deleteAllBtn.addEventListener('click', async () => { const currentName = normName(usernameEl.value) || 'Guest'; if (!currentName || currentName === 'Guest') { showError('Save a username first to delete messages.'); return; } if (!confirm(`Delete ALL messages posted by username "${currentName}"?`)) return; if (!confirm(`Final confirm: permanently delete all messages by "${currentName}".`)) return; try { const { error } = await supabase.from('messages').delete().eq('username', currentName); if (error) { showError('Delete-all failed'); console.error(error); return; } await loadMessages(); showError(`Deleted all messages by "${currentName}".`); } catch (e) { console.error(e); showError('Delete-all failed'); } }); /* === DB PROBE === */ async function probeConnection() { if (!navigator.onLine) { dbDot.style.background = '#dc2626'; dbDot.title = 'Network offline'; showError('Network offline', true); return; } try { const ctrl = new AbortController(); const tid = setTimeout(() => ctrl.abort(), 5000); const r = await fetch(`${SUPABASE_URL}/rest/v1/messages?select=id&limit=1`, { method: 'GET', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }, signal: ctrl.signal, cache: 'no-store' }); clearTimeout(tid); if (r.ok) { dbDot.style.background = '#f59e0b'; dbDot.title = 'REST API reachable'; return; } dbDot.style.background = '#dc2626'; dbDot.title = `REST probe failed: ${r.status}`; if (r.status === 401 || r.status === 403) showError(`Server auth error ${r.status}: check key & RLS`, true); else showError(`REST probe failed ${r.status}`, true); } catch (e) { dbDot.style.background = '#dc2626'; dbDot.title = 'Cannot reach server API'; showError('Cannot reach server API', true); } } /* === REALTIME === */ let channel = null; async function subscribeRealtime() { try { if (channel) await supabase.removeChannel(channel); channel = supabase.channel('chat-' + Date.now()) .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => { const row = payload.new; if (row.content === undefined && row.message !== undefined) row.content = row.message; const currentUsername = loggedAs || normName(usernameEl.value) || 'Guest'; if (row.username !== currentUsername) { showNotification(row.username || 'Guest', row.content || row.message || ''); } if (row.client_id && String(row.device_id) === String(deviceId)) { const tmp = chatEl.querySelector(`[data-client-id='${row.client_id}']`); if (tmp) tmp.remove(); } renderRow(row); }) .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => { const old = payload.old; if (!old?.id) return; const el = chatEl.querySelector(`[data-id='${old.id}']`); if (el) el.remove(); }) .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, payload => { const r = payload.new; if (!r) return; const el = chatEl.querySelector(`[data-id='${r.id}']`); if (el) { const txt = el.querySelector('.text'); if (txt) txt.textContent = r.content ?? r.message ?? ''; const usr = el.querySelector('.username'); if (usr) usr.textContent = r.username ?? usr.textContent; const ts = el.querySelector('.ts'); if (ts) ts.textContent = fmtTime(r.created_at ?? new Date().toISOString()); } else renderRow(r); }) .subscribe(status => { if (status === 'SUBSCRIBED') { dbDot.style.background = '#16a34a'; dbDot.title = 'Realtime subscribed'; } else { dbDot.style.background = '#f59e0b'; dbDot.title = 'Realtime connecting/failed: ' + status; } if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') probeConnection(); }); } catch (e) { console.warn('realtime error', e); dbDot.style.background = '#dc2626'; showError('Realtime failed; using polling', true); dbDot.title = 'Realtime subscription failed'; } } /* === INIT === */ modalClose.addEventListener('click', closeModal); usernameEl.addEventListener('input', e => { usernameEl.value = normName(usernameEl.value); }); (async () => { try { const ip = await getPublicIp(); cachedPublicIp = ip; const saved = localStorage.getItem('chatUsername') || ''; if (saved) { usernameEl.value = saved; currentUsernameLabel.textContent = 'Username: ' + saved; } if (localStorage.getItem('chat_logged_as')) { loggedAs = localStorage.getItem('chat_logged_as'); currentUsernameLabel.textContent = 'Username: ' + loggedAs; usernameEl.value = loggedAs; } if (ip) { try { const { data } = await supabase.from('user_ips').select('*').or(`ip_address.cs.{"${ip}"},device_ip.eq.${ip}`).limit(1); const r = data?.[0]; if (r && (r.username || r.current_username)) { const name = r.username || r.current_username; if (r.password_hash) { if (String(r.device_id) === String(deviceId) || loggedAs === name) { usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; localStorage.setItem('chatUsername', name); } } else { usernameEl.value = name; currentUsernameLabel.textContent = 'Username: ' + name; localStorage.setItem('chatUsername', name); } } } catch (e) {} } } catch (e) { console.warn('init mapping fail', e); } await initNotifications(); probeConnection(); await loadMessages(); await subscribeRealtime(); setInterval(probeConnection, 10000); sendBtn.addEventListener('click', sendMessage); messageInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }); autoScrollBtn.addEventListener('click', () => { autoScroll = !autoScroll; autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`; }); })(); </script> </body> </html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>modern chat by Nishgamerr</title>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+    <style>
+      body {
+        background: #071127;
+        color: #e6eef8;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto;
+        display: flex;
+        justify-content: center;
+        padding: 18px;
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: 720px;
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 8px 0;
+        color: #60a5fa;
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      #currentUsername {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        margin-right: 8px;
+      }
+
+      #username {
+        background: #0f1724;
+        color: #e6eef8;
+        border: 1px solid #1f2937;
+        padding: 6px 8px;
+        border-radius: 6px;
+        width: 48%;
+        max-width: 320px;
+      }
+
+      #chat {
+        background: #071127;
+        border-radius: 8px;
+        padding: 12px;
+        height: 420px;
+        overflow-y: auto;
+        border: 1px solid #132033;
+      }
+
+      .message {
+        display: flex;
+        margin-bottom: 10px;
+        opacity: 1;
+        transition: opacity 0.5s;
+        width: 100%;
+      }
+
+      .msg-content-bubble {
+        padding: 8px 12px;
+        border-radius: 12px;
+        max-width: 80%;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+      }
+
+      .my-message {
+        justify-content: flex-end;
+      }
+
+      .other-message {
+        justify-content: flex-start;
+      }
+
+      .my-message .msg-content-bubble {
+        background: #1d4ed8;
+        border-bottom-right-radius: 2px;
+      }
+
+      .other-message .msg-content-bubble {
+        background: #1f2937;
+        border-bottom-left-radius: 2px;
+      }
+
+      .message[data-sending="true"] .msg-content-bubble {
+        opacity: 0.7;
+      }
+
+      .username {
+        color: #d1d5db;
+        font-weight: 700;
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+      }
+
+      .my-message .username {
+        color: #e0f2f1;
+      }
+
+      .text {
+        color: #e6eef8;
+        white-space: pre-wrap;
+        line-height: 1.35;
+        font-size: 0.98rem;
+        word-break: break-word;
+      }
+
+      .bubble-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 0.82rem;
+      }
+
+      .ts {
+        color: #d1ddff;
+        font-size: 0.82rem;
+        white-space: nowrap;
+      }
+
+      .other-message .ts {
+        color: #94a3b8;
+      }
+
+      .del1 {
+        width: 18px;
+        height: 18px;
+        line-height: 1;
+        border-radius: 50%;
+        border: none;
+        background: #ef4444;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-weight: 700;
+        font-size: 0.8rem;
+        transition: background 0.2s;
+      }
+
+      .del1:hover {
+        background: #dc2626;
+      }
+
+      .pending-status {
+        color: #fbbf24;
+        font-size: 0.82rem;
+        white-space: nowrap;
+        margin-left: auto;
+        margin-top: 4px;
+      }
+
+      #messageArea {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-top: 10px;
+      }
+
+      #controls {
+        display: flex;
+        gap: 8px;
+      }
+
+      #messageInput {
+        flex: 1;
+        padding: 10px;
+        border-radius: 8px;
+        background: #0f1724;
+        color: #e6eef8;
+        border: 1px solid #1f2937;
+      }
+
+      #sendBtn {
+        padding: 10px 14px;
+        background: #2563eb;
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .smallBtn {
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: none;
+        background: #1f2937;
+        color: #e6eef8;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+
+      #controls2 {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      #errorBox {
+        margin-top: 8px;
+        color: #fecaca;
+        min-height: 1.2em;
+        white-space: pre-wrap;
+      }
+
+      #dbDot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-left: 8px;
+        background: #dc2626;
+      }
+
+      #modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 60;
+      }
+
+      .card {
+        background: #071127;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #132033;
+        width: 420px;
+        max-width: 95%;
+        color: #e6eef8;
+      }
+
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      #inspectOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.02);
+        z-index: 2147483647;
+        display: none;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      #inspectOverlay.show {
+        display: block;
+      }
+
+      @media (max-width: 480px) {
+        #chat {
+          height: 285px;
+        }
+
+        #username {
+          width: 60%;
+        }
+
+        .del1 {
+          width: 16px;
+          height: 16px;
+          font-size: 0.7rem;
+        }
+
+        .card {
+          width: 95%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>modern chat by Nishgamerr</h2>
+        <div>
+          <span id="dbDot" title="DB status"></span>
+        </div>
+      </div>
+
+      <div class="top">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span id="currentUsername">Username: Guest</span>
+          <input id="username" placeholder="Enter username" autocomplete="off" />
+          <button id="saveName" class="smallBtn">Save</button>
+        </div>
+
+        <div style="color:#94a3b8">Old GUI & Realtime</div>
+      </div>
+
+      <div id="chat" role="log" aria-live="polite"></div>
+
+      <div id="messageArea">
+        <div id="controls">
+          <input id="messageInput" placeholder="Type a message" />
+          <button id="sendBtn">Send</button>
+        </div>
+      </div>
+
+      <div id="controls2">
+        <button id="autoScrollBtn" class="smallBtn">Auto Scroll: ON</button>
+        <button id="deleteAllBtn" class="smallBtn">Delete All Mine</button>
+        <button id="passwordBtn" class="smallBtn">Password</button>
+      </div>
+
+      <div id="errorBox"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" aria-hidden="true">
+      <div class="card" role="dialog" aria-modal="true">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong id="modalTitle">Password</strong>
+          <button id="modalClose" class="smallBtn">Close</button>
+        </div>
+
+        <div style="margin-top:8px;">
+          <div id="modalMsg" style="color:#9aa3b2;margin-bottom:8px"></div>
+
+          <div id="loginForm" style="display:none;">
+            <div class="row">
+              <label style="color:#9aa3b2">Password</label>
+              <input id="loginPw" type="password" placeholder="Enter password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+            <div class="actions">
+              <button id="loginBtn" class="smallBtn">Login</button>
+            </div>
+          </div>
+
+          <div id="setForm" style="display:none;">
+            <div class="row">
+              <label style="color:#9aa3b2">New password</label>
+              <input id="setPw" type="password" placeholder="New password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+
+            <div class="row">
+              <label style="color:#9aa3b2">Confirm password</label>
+              <input id="setPwConfirm" type="password" placeholder="Confirm password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+
+            <div class="actions">
+              <button id="setSaveBtn" class="smallBtn">Save</button>
+              <button id="setSkipBtn" class="smallBtn">Skip (claim without password)</button>
+            </div>
+          </div>
+
+          <div id="changeForm" style="display:none;">
+            <div class="row">
+              <label style="color:#9aa3b2">Current password</label>
+              <input id="chgCurrent" type="password" placeholder="Current password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+
+            <div class="row">
+              <label style="color:#9aa3b2">New password</label>
+              <input id="chgNew" type="password" placeholder="New password" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+
+            <div class="row">
+              <label style="color:#9aa3b2">Confirm new</label>
+              <input id="chgConfirm" type="password" placeholder="Confirm new" style="width:100%;padding:8px;border-radius:6px;background:#0f1724;border:1px solid #1f2937;color:#e6eef8" />
+            </div>
+
+            <div class="actions">
+              <button id="chgSaveBtn" class="smallBtn">Change</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fake Inspect Overlay -->
+    <div id="inspectOverlay">
+      <pre id="sourceCode" style="position:fixed;top:0;right:0;bottom:0;width:50%;background:#111;color:#0f0;font-family:monospace;font-size:12px;overflow:auto;padding:10px;pointer-events:auto;user-select:text;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;">
+      </pre>
+    </div>
+
+    <script type="module">
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+      const SUPABASE_URL = 'https://xvnbxdcqmfsnnvbugasi.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_OQbzgO3ZE6-6qDl1YT_fXA_LA5aM-f0';
+
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: { timeout: 15000 },
+      });
+
+      /* === DOM ELEMENTS === */
+      const chatEl = document.getElementById('chat');
+      const usernameEl = document.getElementById('username');
+      const currentUsernameLabel = document.getElementById('currentUsername');
+      const saveNameBtn = document.getElementById('saveName');
+      const deleteAllBtn = document.getElementById('deleteAllBtn');
+      const autoScrollBtn = document.getElementById('autoScrollBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const messageInput = document.getElementById('messageInput');
+      const errorBox = document.getElementById('errorBox');
+      const dbDot = document.getElementById('dbDot');
+      const passwordBtn = document.getElementById('passwordBtn');
+      const modal = document.getElementById('modal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalMsg = document.getElementById('modalMsg');
+      const loginForm = document.getElementById('loginForm');
+      const setForm = document.getElementById('setForm');
+      const changeForm = document.getElementById('changeForm');
+      const loginPw = document.getElementById('loginPw');
+      const loginBtn = document.getElementById('loginBtn');
+      const setPw = document.getElementById('setPw');
+      const setPwConfirm = document.getElementById('setPwConfirm');
+      const setSaveBtn = document.getElementById('setSaveBtn');
+      const setSkipBtn = document.getElementById('setSkipBtn');
+      const chgCurrent = document.getElementById('chgCurrent');
+      const chgNew = document.getElementById('chgNew');
+      const chgConfirm = document.getElementById('chgConfirm');
+      const chgSaveBtn = document.getElementById('chgSaveBtn');
+      const modalClose = document.getElementById('modalClose');
+      const inspectOverlay = document.getElementById('inspectOverlay');
+      const sourceCodeEl = document.getElementById('sourceCode');
+
+      /* === STATE === */
+      const DEVICE_KEY = 'chat_device_id_v5';
+      let deviceId = localStorage.getItem(DEVICE_KEY);
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem(DEVICE_KEY, deviceId);
+      }
+
+      let autoScroll = true;
+      autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+
+      let loggedAs = localStorage.getItem('chat_logged_as') || null;
+      let cachedPublicIp = null;
+      let notificationPermission = Notification.permission || 'default';
+
+      const vapidPublicKey = 'BLt15oea4JFaaS1yTr1ujZESXFKiveemS91tMetMUm6F6RtHZyAMllXvbquKc2X_NZe2hPgen_pLjyrhiuMIulk';
+
+      /* === HELPERS === */
+      function showError(msg, persist = false) {
+        errorBox.textContent = msg || '';
+        if (msg && !persist)
+          setTimeout(() => {
+            if (errorBox.textContent === msg) errorBox.textContent = '';
+          }, 4000);
+      }
+
+      function fmtTime(iso) {
+        try {
+          return new Date(iso).toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            hour12: true,
+          });
+        } catch {
+          return '??:??';
+        }
+      }
+
+      async function sha256hex(str) {
+        const enc = new TextEncoder();
+        const data = enc.encode(str);
+        const h = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(h))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+
+      async function getPublicIp() {
+        try {
+          const r = await fetch('https://api.ipify.org?format=json');
+          const j = await r.json();
+          return j.ip || null;
+        } catch {
+          return null;
+        }
+      }
+
+      function normName(n) {
+        return String(n || '').replace(/\s+/g, ' ').trim();
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      async function initNotifications() {
+        if (!('Notification' in window)) return;
+        if (notificationPermission === 'default') {
+          notificationPermission = await Notification.requestPermission();
+          if (notificationPermission === 'granted') {
+            showError('Notifications enabled! You will be notified of new messages even when browser is closed.', false);
+            const currentUser = loggedAs || normName(usernameEl.value) || null;
+            if (currentUser) {
+              await subscribeToPush(currentUser);
+            }
+          } else if (notificationPermission === 'denied') {
+            showError('Notifications denied. You can enable them in browser settings.', true);
+          }
+        }
+      }
+
+      function showNotification(username, message) {
+        if (notificationPermission !== 'granted') return;
+        new Notification(`New message from ${username}`, {
+          body: message,
+          icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42NDE1OCAyIDYgNC42NDE1OCA2IDhWMTZDMCAxOS4zNTY5IDMuNjQzMDUgMjMgNy40MzYxNCAyM0gxNkM4LjM1NDM1IDIzIDExLjY0MzYgMTkuMzU2OSAxMiAxNlY4QzEyIDYuNjQxNTggOS4zNTg0MiAyIDggMloiIGZpbGw9IiM0RDQ1RDUiLz4KPC9zdmc+Cg==',
+          tag: 'chat-message',
+          requireInteraction: false,
+        });
+      }
+
+      async function subscribeToPush(username) {
+        if (notificationPermission !== 'granted') return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          console.warn('Push notifications not supported');
+          return;
+        }
+        try {
+          // Register Service Worker (inline for simplicity)
+          const swCode = `
+            self.addEventListener('push', function(event) {
+              let data = { title: 'New Chat Message', body: 'You have a new message', url: '/' };
+              if (event.data) {
+                data = event.data.json();
+              }
+              const options = {
+                body: data.body,
+                icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42NDE1OCAyIDYgNC42NDE1OCA2IDhWMTZDMCAxOS4zNTY5IDMuNjQzMDUgMjMgNy40MzYxNCAyM0gxNkM4LjM1NDM1IDIzIDExLjY0MzYgMTkuMzU2OSAxMiAxNlY4QzEyIDYuNjQxNTggOS4zNTg0MiAyIDggMloiIGZpbGw9IiM0RDQ1RDUiLz4KPC9zdmc+Cg==',
+                badge: '/icon-192x192.png',
+                tag: 'chat-notification',
+                data: { url: data.url || '/' }
+              };
+              event.waitUntil(
+                self.registration.showNotification(data.title, options)
+              );
+            });
+
+            self.addEventListener('notificationclick', function(event) {
+              event.notification.close();
+              event.waitUntil(
+                clients.openWindow(event.notification.data?.url || '/')
+              );
+            });
+          `;
+          const blob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(blob);
+          const registration = await navigator.serviceWorker.register(swUrl, { scope: './' });
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+
+          // Upsert to Supabase
+          const { error } = await supabase.from('push_subscriptions').upsert([
+            { username: username, device_id: deviceId, subscription: subscription.toJSON() },
+          ]);
+          if (error) console.error('Subscription upsert error:', error);
+          else console.log('Push subscription successful');
+          URL.revokeObjectURL(swUrl); // Clean up
+        } catch (error) {
+          console.error('Error subscribing to push:', error);
+          showError('Failed to subscribe to push notifications. Check console for details.', true);
+        }
+      }
+
+      /* === RENDER MESSAGE === */
+      function renderRow(row, isSending = false) {
+        if (!row) return;
+        const id = row.id ?? null;
+        const clientId = row.client_id ?? null;
+        if ((id && chatEl.querySelector(`[data-id='${id}']`)) || (clientId && chatEl.querySelector(`[data-client-id='${clientId}']`)))
+          return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message';
+        if (id) wrapper.dataset.id = id;
+        if (clientId) wrapper.dataset.clientId = clientId;
+        if (isSending) wrapper.dataset.sending = 'true';
+
+        const ownedByDevice = row.device_id && String(row.device_id) === String(deviceId);
+        const ownedByLogin = loggedAs && row.username && String(row.username) === String(loggedAs);
+        const isMine = ownedByDevice || ownedByLogin;
+
+        wrapper.classList.add(isMine ? 'my-message' : 'other-message');
+
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-content-bubble';
+
+        const u = document.createElement('div');
+        u.className = 'username';
+        u.textContent = row.username || 'Guest';
+
+        const t = document.createElement('div');
+        t.className = 'text';
+        t.textContent = row.content ?? row.message ?? '';
+
+        bubble.appendChild(u);
+        bubble.appendChild(t);
+
+        const footer = document.createElement('div');
+        footer.className = 'bubble-footer';
+
+        if (!isSending) {
+          const ts = document.createElement('span');
+          ts.className = 'ts';
+          ts.textContent = fmtTime(row.created_at ?? new Date().toISOString());
+          footer.appendChild(ts);
+
+          if (ownedByDevice || ownedByLogin) {
+            const del = document.createElement('button');
+            del.className = 'del1';
+            del.textContent = '×';
+            del.title = 'Delete message';
+            del.onclick = async (e) => {
+              e.stopPropagation();
+              if (!id) return;
+              const messageWrapper = del.closest('.message');
+              try {
+                let conditions = [];
+                if (deviceId) conditions.push(`device_id.eq.${deviceId}`);
+                if (loggedAs) conditions.push(`username.eq.${loggedAs}`);
+                if (conditions.length === 0) throw new Error('No ownership');
+                const orClause = conditions.join(',');
+                const { error } = await supabase.from('messages').delete().eq('id', id).or(orClause);
+                if (error) throw error;
+                messageWrapper.remove();
+              } catch (err) {
+                console.error(err);
+                showError('Delete failed');
+              }
+            };
+            footer.appendChild(del);
+          }
+        } else {
+          const pending = document.createElement('div');
+          pending.className = 'pending-status';
+          pending.textContent = 'Sending...';
+          footer.appendChild(pending);
+        }
+
+        if (isMine && row.username !== 'Guest') u.style.display = 'none';
+        if (footer.children.length) bubble.appendChild(footer);
+        wrapper.appendChild(bubble);
+        chatEl.appendChild(wrapper);
+
+        if (autoScroll) chatEl.scrollTop = chatEl.scrollHeight;
+      }
+
+      /* === LOAD MESSAGES === */
+      async function loadMessages() {
+        if (!navigator.onLine) {
+          showError('Network offline — cannot load messages');
+          return;
+        }
+        try {
+          const { data, error } = await supabase
+            .from('messages')
+            .select('id, username, content, message, device_id, created_at')
+            .order('created_at', { ascending: true });
+          if (error) {
+            showError('Failed to load messages: ' + (error.message || error.code), true);
+            console.error(error);
+            return;
+          }
+          chatEl.innerHTML = '';
+          (data || []).forEach((r) => {
+            if (r.content === undefined && r.message !== undefined) r.content = r.message;
+            renderRow(r);
+          });
+        } catch (e) {
+          console.error(e);
+          showError('Load failed');
+        }
+      }
+
+      /* === USER IP HELPERS === */
+      async function getUserByUsername(name) {
+        if (!name) return null;
+        try {
+          const { data, error } = await supabase
+            .from('user_ips')
+            .select('ip_address, password_hash, username, current_username')
+            .or(`username.eq.${name},current_username.eq.${name}`)
+            .limit(1);
+          if (error) {
+            console.warn(error);
+            return null;
+          }
+          return data?.[0] ?? null;
+        } catch (e) {
+          console.warn(e);
+          return null;
+        }
+      }
+
+      async function upsertUserIp({ username, ip, device_ip = null, device_id = null, password_hash = undefined }) {
+        if (!username || !ip) return;
+        try {
+          const { data: existing, error: selErr } = await supabase
+            .from('user_ips')
+            .select('ip_address, password_hash')
+            .eq('username', username)
+            .limit(1);
+          if (selErr) {
+            console.warn('select error', selErr);
+            return;
+          }
+
+          const payload = {
+            username,
+            current_username: username,
+            device_ip,
+            device_id: device_id || deviceId,
+            updated_at: new Date().toISOString(),
+          };
+
+          const exists = existing && existing.length;
+          if (exists) {
+            let ips = Array.isArray(existing[0].ip_address) ? existing[0].ip_address : existing[0].ip_address ? [existing[0].ip_address] : [];
+            if (!ips.includes(ip)) ips.push(ip);
+            const upd = {
+              ...payload,
+              ip_address: ips,
+              password_hash: password_hash !== undefined ? password_hash : existing[0].password_hash,
+            };
+            const { error } = await supabase.from('user_ips').update(upd).eq('username', username);
+            if (error) console.error('update error', error);
+          } else {
+            const ins = { ...payload, ip_address: [ip], password_hash };
+            const { error } = await supabase.from('user_ips').insert([ins]);
+            if (error) console.error('insert error', error);
+          }
+        } catch (e) {
+          console.error('upsert error', e);
+          showError('Failed to log IP address.', true);
+        }
+      }
+
+      /* === MODAL === */
+      function showModal(mode, username) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        modalTitle.textContent = mode === 'login' ? `Login — ${username}` : mode === 'set' ? `Set password — ${username}` : `Change password — ${username}`;
+        modalMsg.textContent = mode === 'login' ? 'This username is protected. Enter password.' : mode === 'set' ? 'Set a password to protect this username or Skip to claim without password.' : 'Enter current password and new password.';
+        loginForm.style.display = mode === 'login' ? 'block' : 'none';
+        setForm.style.display = mode === 'set' ? 'block' : 'none';
+        changeForm.style.display = mode === 'change' ? 'block' : 'none';
+        loginPw.value = setPw.value = setPwConfirm.value = chgCurrent.value = chgNew.value = chgConfirm.value = '';
+        modal.dataset.username = username || '';
+        modal.dataset.mode = mode || '';
+      }
+
+      function closeModal() {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal.dataset.username = modal.dataset.mode = '';
+      }
+
+      /* === SAVE NAME & PASSWORD === */
+      saveNameBtn.addEventListener('click', async () => {
+        const raw = usernameEl.value || '';
+        const name = normName(raw);
+        if (!name) return showError('Enter username');
+        usernameEl.value = name;
+
+        if (loggedAs && loggedAs === name) {
+          currentUsernameLabel.textContent = 'Username: ' + name;
+          localStorage.setItem('chatUsername', name);
+          showError('Active: ' + name);
+          await subscribeToPush(name);
+          return;
+        }
+
+        const rec = await getUserByUsername(name);
+        if (rec && rec.password_hash) {
+          showModal('login', name);
+          const handler = async () => {
+            const pw = loginPw.value.trim();
+            if (!pw) return showError('Enter password');
+            const hash = await sha256hex(pw);
+            const fresh = await getUserByUsername(name);
+            if (!fresh || !fresh.password_hash) {
+              showError('Password removed — retry');
+              closeModal();
+              return;
+            }
+            if (hash === fresh.password_hash) {
+              loggedAs = name;
+              localStorage.setItem('chat_logged_as', loggedAs);
+              usernameEl.value = name;
+              currentUsernameLabel.textContent = 'Username: ' + name;
+              await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: fresh.password_hash });
+              closeModal();
+              showError('Logged in as ' + name);
+              await loadMessages();
+              await subscribeToPush(name);
+            } else showError('Wrong password', true);
+          };
+          loginBtn.onclick = null;
+          loginBtn.onclick = handler;
+          return;
+        }
+
+        showModal('set', name);
+        const setHandler = async () => {
+          const p = setPw.value.trim(),
+            c = setPwConfirm.value.trim();
+          const fresh = await getUserByUsername(name);
+          if (fresh && fresh.password_hash) {
+            showError('A password was set while you were typing. Please login.', true);
+            closeModal();
+            return;
+          }
+          if (!p) return showError('Enter a password or Skip to claim without password');
+          if (p !== c) return showError('Passwords do not match');
+          const h = await sha256hex(p);
+          try {
+            const { data: existing } = await supabase.from('user_ips').select('id,password_hash').or(`username.eq.${name},current_username.eq.${name}`).limit(1);
+            if (existing?.[0]?.password_hash) {
+              showError('Another user set a password — please login', true);
+              closeModal();
+              return;
+            }
+            await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: h });
+            loggedAs = name;
+            localStorage.setItem('chat_logged_as', loggedAs);
+            usernameEl.value = name;
+            currentUsernameLabel.textContent = 'Username: ' + name;
+            closeModal();
+            showError('Password set and claimed: ' + name);
+            await loadMessages();
+            await subscribeToPush(name);
+          } catch (e) {
+            console.error(e);
+            showError('Failed to set password');
+          }
+        };
+        setSaveBtn.onclick = null;
+        setSaveBtn.onclick = setHandler;
+
+        const skipHandler = async () => {
+          const fresh = await getUserByUsername(name);
+          if (fresh && fresh.password_hash) {
+            showError('A password exists now — please login', true);
+            closeModal();
+            return;
+          }
+          await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: null });
+          loggedAs = name;
+          localStorage.setItem('chat_logged_as', loggedAs);
+          usernameEl.value = name;
+          currentUsernameLabel.textContent = 'Username: ' + name;
+          closeModal();
+          showError('Claimed: ' + name);
+          await loadMessages();
+          await subscribeToPush(name);
+        };
+        setSkipBtn.onclick = null;
+        setSkipBtn.onclick = skipHandler;
+      });
+
+      passwordBtn.addEventListener('click', async () => {
+        const raw = usernameEl.value || '';
+        const name = normName(raw) || loggedAs;
+        if (!name) return showError('Enter or select username first');
+        usernameEl.value = name;
+        const rec = await getUserByUsername(name);
+        if (rec && rec.password_hash) {
+          if (loggedAs && loggedAs === name) {
+            showModal('change', name);
+            const changeHandler = async () => {
+              const cur = chgCurrent.value.trim(),
+                nw = chgNew.value.trim(),
+                conf = chgConfirm.value.trim();
+              const fresh = await getUserByUsername(name);
+              if (!fresh || !fresh.password_hash) {
+                showError('Password missing; cannot change.');
+                closeModal();
+                return;
+              }
+              if (!cur || !nw) return showError('Fill both fields');
+              if (nw !== conf) return showError('New passwords do not match');
+              const curHash = await sha256hex(cur);
+              if (curHash !== fresh.password_hash) return showError('Current password wrong');
+              const newHash = await sha256hex(nw);
+              const { error } = await supabase.from('user_ips').update({ password_hash: newHash }).eq('username', name);
+              if (error) {
+                console.error(error);
+                showError('Change failed');
+                return;
+              }
+              closeModal();
+              showError('Password changed');
+            };
+            chgSaveBtn.onclick = null;
+            chgSaveBtn.onclick = changeHandler;
+            return;
+          }
+
+          showModal('login', name);
+          const loginHandler = async () => {
+            const pw = loginPw.value.trim();
+            if (!pw) return showError('Enter password');
+            const hash = await sha256hex(pw);
+            const fresh = await getUserByUsername(name);
+            if (!fresh || !fresh.password_hash) {
+              showError('Password removed; try again');
+              closeModal();
+              return;
+            }
+            if (hash === fresh.password_hash) {
+              loggedAs = name;
+              localStorage.setItem('chat_logged_as', loggedAs);
+              usernameEl.value = name;
+              currentUsernameLabel.textContent = 'Username: ' + name;
+              await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: fresh.password_hash });
+              closeModal();
+              showError('Logged in as ' + name);
+              await loadMessages();
+              await subscribeToPush(name);
+            } else showError('Wrong password', true);
+          };
+          loginBtn.onclick = null;
+          loginBtn.onclick = loginHandler;
+          return;
+        }
+
+        showModal('set', name);
+        const setHandler2 = async () => {
+          const p = setPw.value.trim(),
+            c = setPwConfirm.value.trim();
+          const fresh = await getUserByUsername(name);
+          if (fresh && fresh.password_hash) {
+            showError('A password exists now — please login', true);
+            closeModal();
+            return;
+          }
+          if (!p) return showError('Enter new password or Skip');
+          if (p !== c) return showError('Passwords do not match');
+          const h = await sha256hex(p);
+          await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: h });
+          loggedAs = name;
+          localStorage.setItem('chat_logged_as', loggedAs);
+          usernameEl.value = name;
+          currentUsernameLabel.textContent = 'Username: ' + name;
+          closeModal();
+          showError('Password set and claimed');
+          await loadMessages();
+          await subscribeToPush(name);
+        };
+        setSaveBtn.onclick = null;
+        setSaveBtn.onclick = setHandler2;
+
+        const skipHandler2 = async () => {
+          const fresh = await getUserByUsername(name);
+          if (fresh && fresh.password_hash) {
+            showError('A password exists now — please login', true);
+            closeModal();
+            return;
+          }
+          await upsertUserIp({ username: name, ip: cachedPublicIp || ('device-' + deviceId), device_id: deviceId, password_hash: null });
+          loggedAs = name;
+          localStorage.setItem('chat_logged_as', loggedAs);
+          usernameEl.value = name;
+          currentUsernameLabel.textContent = 'Username: ' + name;
+          closeModal();
+          showError('Claimed ' + name);
+          await loadMessages();
+          await subscribeToPush(name);
+        };
+        setSkipBtn.onclick = null;
+        setSkipBtn.onclick = skipHandler2;
+      });
+
+      /* === SEND MESSAGE === */
+      async function sendMessage() {
+        const txt = messageInput.value.trim();
+        if (!txt) return;
+        if (!navigator.onLine) {
+          showError('Network offline — cannot send');
+          return;
+        }
+        messageInput.value = '';
+        showError('');
+        const finalName = normName(usernameEl.value) || 'Guest';
+        const clientId = crypto.randomUUID();
+        const tempRow = {
+          username: finalName,
+          content: txt,
+          device_id: deviceId,
+          client_id: clientId,
+          created_at: new Date().toISOString(),
+        };
+        renderRow(tempRow, true);
+
+        (async () => {
+          const ipToUse = cachedPublicIp || ('device-' + deviceId);
+          try {
+            const claimed = await getUserByUsername(finalName);
+            const protectedName = claimed && claimed.password_hash && (!loggedAs || loggedAs !== finalName);
+            if (protectedName) {
+              showError('Username is protected. Login (Password) first to send.', true);
+              throw new Error('protected');
+            }
+            const ph = claimed ? claimed.password_hash : null;
+            upsertUserIp({ username: finalName, ip: ipToUse, device_id: deviceId, password_hash: ph }).catch(() => {});
+
+            let { error } = await supabase.from('messages').insert([{ username: finalName, content: txt, device_id: deviceId, client_id: clientId }]);
+            if (error && /column .*content .*does not exist/i.test(String(error.message || ''))) {
+              const { error: e2 } = await supabase.from('messages').insert([{ username: finalName, message: txt, device_id: deviceId, client_id: clientId }]);
+              if (e2) throw e2;
+            } else if (error) throw error;
+
+            // Trigger push notifications to all other subscribed users via Edge Function
+            try {
+              const { data: pushResult, error: pushError } = await supabase.functions.invoke('send-chat-notification', {
+                body: { username: finalName, content: txt, sender_username: finalName, sender_device: deviceId },
+              });
+              if (pushError) {
+                console.warn('Failed to trigger push notifications:', pushError);
+              } else {
+                console.log('Push notifications triggered successfully');
+              }
+            } catch (invokeErr) {
+              console.warn('Failed to invoke push notification function:', invokeErr);
+            }
+
+            // Update the temporary message with real data if needed
+            const tempEl = chatEl.querySelector(`[data-client-id='${clientId}']`);
+            if (tempEl) {
+              tempEl.dataset.sending = 'false';
+              const pend = tempEl.querySelector('.pending-status');
+              if (pend) pend.remove();
+            }
+          } catch (e) {
+            console.error('Send error', e);
+            let msg = 'Send failed: Unknown error. Try saving your username first.';
+            if (!navigator.onLine) msg = 'Send failed: Network offline';
+            else if (e && e.message) msg = 'Send failed: ' + e.message;
+            showError(msg, true);
+            const tempEl = chatEl.querySelector(`[data-client-id='${clientId}']`);
+            if (tempEl) {
+              tempEl.dataset.sending = 'false';
+              const pend = tempEl.querySelector('.pending-status');
+              if (pend) pend.textContent = 'Failed';
+              setTimeout(() => {
+                tempEl.remove();
+                if (errorBox.textContent === msg) showError('');
+              }, 5000);
+            }
+          }
+        })();
+      }
+
+      /* === DELETE ALL MINE === */
+      deleteAllBtn.addEventListener('click', async () => {
+        const currentName = normName(usernameEl.value) || 'Guest';
+        if (!currentName || currentName === 'Guest') {
+          showError('Save a username first to delete messages.');
+          return;
+        }
+        if (!confirm(`Delete ALL messages posted by username "${currentName}"?`)) return;
+        if (!confirm(`Final confirm: permanently delete all messages by "${currentName}".`)) return;
+        try {
+          const { error } = await supabase.from('messages').delete().eq('username', currentName);
+          if (error) {
+            showError('Delete-all failed');
+            console.error(error);
+            return;
+          }
+          await loadMessages();
+          showError(`Deleted all messages by "${currentName}".`);
+        } catch (e) {
+          console.error(e);
+          showError('Delete-all failed');
+        }
+      });
+
+      /* === DB PROBE === */
+      async function probeConnection() {
+        if (!navigator.onLine) {
+          dbDot.style.background = '#dc2626';
+          dbDot.title = 'Network offline';
+          showError('Network offline', true);
+          return;
+        }
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 5000);
+          const r = await fetch(`${SUPABASE_URL}/rest/v1/messages?select=id&limit=1`, {
+            method: 'GET',
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+            signal: ctrl.signal,
+            cache: 'no-store',
+          });
+          clearTimeout(tid);
+          if (r.ok) {
+            dbDot.style.background = '#f59e0b';
+            dbDot.title = 'REST API reachable';
+            return;
+          }
+          dbDot.style.background = '#dc2626';
+          dbDot.title = `REST probe failed: ${r.status}`;
+          if (r.status === 401 || r.status === 403) showError(`Server auth error ${r.status}: check key & RLS`, true);
+          else showError(`REST probe failed ${r.status}`, true);
+        } catch (e) {
+          dbDot.style.background = '#dc2626';
+          dbDot.title = 'Cannot reach server API';
+          showError('Cannot reach server API', true);
+        }
+      }
+
+      /* === REALTIME === */
+      let channel = null;
+      async function subscribeRealtime() {
+        try {
+          if (channel) await supabase.removeChannel(channel);
+          channel = supabase
+            .channel('chat-' + Date.now())
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+              const row = payload.new;
+              if (row.content === undefined && row.message !== undefined) row.content = row.message;
+              const currentUsername = loggedAs || normName(usernameEl.value) || 'Guest';
+              if (row.username !== currentUsername) {
+                showNotification(row.username || 'Guest', row.content || row.message || '');
+              }
+              if (row.client_id && String(row.device_id) === String(deviceId)) {
+                const tmp = chatEl.querySelector(`[data-client-id='${row.client_id}']`);
+                if (tmp) tmp.remove();
+              }
+              renderRow(row);
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
+              const old = payload.old;
+              if (!old?.id) return;
+              const el = chatEl.querySelector(`[data-id='${old.id}']`);
+              if (el) el.remove();
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+              const r = payload.new;
+              if (!r) return;
+              const el = chatEl.querySelector(`[data-id='${r.id}']`);
+              if (el) {
+                const txt = el.querySelector('.text');
+                if (txt) txt.textContent = r.content ?? r.message ?? '';
+                const usr = el.querySelector('.username');
+                if (usr) usr.textContent = r.username ?? usr.textContent;
+                const ts = el.querySelector('.ts');
+                if (ts) ts.textContent = fmtTime(r.created_at ?? new Date().toISOString());
+              } else renderRow(r);
+            })
+            .subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                dbDot.style.background = '#16a34a';
+                dbDot.title = 'Realtime subscribed';
+              } else {
+                dbDot.style.background = '#f59e0b';
+                dbDot.title = 'Realtime connecting/failed: ' + status;
+              }
+              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') probeConnection();
+            });
+        } catch (e) {
+          console.warn('realtime error', e);
+          dbDot.style.background = '#dc2626';
+          showError('Realtime failed; using polling', true);
+          dbDot.title = 'Realtime subscription failed';
+        }
+      }
+
+      /* === INIT === */
+      modalClose.addEventListener('click', closeModal);
+      usernameEl.addEventListener('input', (e) => {
+        usernameEl.value = normName(usernameEl.value);
+      });
+
+      (async () => {
+        try {
+          const ip = await getPublicIp();
+          cachedPublicIp = ip;
+          const saved = localStorage.getItem('chatUsername') || '';
+          if (saved) {
+            usernameEl.value = saved;
+            currentUsernameLabel.textContent = 'Username: ' + saved;
+          }
+          if (localStorage.getItem('chat_logged_as')) {
+            loggedAs = localStorage.getItem('chat_logged_as');
+            currentUsernameLabel.textContent = 'Username: ' + loggedAs;
+            usernameEl.value = loggedAs;
+          }
+          if (ip) {
+            try {
+              const { data } = await supabase.from('user_ips').select('*').or(`ip_address.cs.{"${ip}"},device_ip.eq.${ip}`).limit(1);
+              const r = data?.[0];
+              if (r && (r.username || r.current_username)) {
+                const name = r.username || r.current_username;
+                if (r.password_hash) {
+                  if (String(r.device_id) === String(deviceId) || loggedAs === name) {
+                    usernameEl.value = name;
+                    currentUsernameLabel.textContent = 'Username: ' + name;
+                    localStorage.setItem('chatUsername', name);
+                  }
+                } else {
+                  usernameEl.value = name;
+                  currentUsernameLabel.textContent = 'Username: ' + name;
+                  localStorage.setItem('chatUsername', name);
+                }
+              }
+            } catch (e) {}
+          }
+        } catch (e) {
+          console.warn('init mapping fail', e);
+        }
+
+        await initNotifications();
+        probeConnection();
+        await loadMessages();
+        await subscribeRealtime();
+        setInterval(probeConnection, 10000);
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+
+        autoScrollBtn.addEventListener('click', () => {
+          autoScroll = !autoScroll;
+          autoScrollBtn.textContent = `Auto Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        });
+      })();
+    </script>
+  </body>
+  </html>
