@@ -1,3 +1,0 @@
-# Nishgamerr.io 
-
-chat app 
