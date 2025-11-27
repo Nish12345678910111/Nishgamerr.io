@@ -3,139 +3,130 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Modern Chat - Features & How to Use</title>
+    <title>Modern Chat - Public Features</title>
     <style>
       body {
+        margin: 0;
+        padding: 20px;
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #e2e8f0;
         font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        margin: 0;
-        padding: 0;
         min-height: 100vh;
-        line-height: 1.6;
-      }
-      .container {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 40px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
       }
       h1 {
+        font-size: 3.5rem;
         text-align: center;
-        font-size: 3.4rem;
         background: linear-gradient(to right, #60a5fa, #c084fc);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        margin: 20px 0 40px 0;
         font-weight: 900;
-        margin-bottom: 12px;
       }
-      .subtitle {
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 24px;
+        max-width: 1200px;
+        width: 100%;
+      }
+      .box {
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 18px;
+        padding: 32px;
         text-align: center;
-        font-size: 1.5rem;
-        color: #94a3b8;
-        margin-bottom: 60px;
-      }
-      .section {
-        background: rgba(15, 23, 42, 0.9);
-        border-radius: 16px;
-        padding: 36px;
-        margin-bottom: 36px;
         border: 1px solid rgba(100, 116, 139, 0.3);
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
       }
-      h2 {
-        font-size: 2.4rem;
+      .box:hover {
+        transform: translateY(-12px);
+        border-color: #60a5fa;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      }
+      .icon {
+        font-size: 4.5rem;
+        margin-bottom: 20px;
+      }
+      .title {
+        font-size: 2rem;
+        font-weight: 800;
         color: #60a5fa;
-        margin: 0 0 28px 0;
-        padding-bottom: 14px;
-        border-bottom: 2px solid #334155;
+        margin: 16px 0;
       }
-      ul {
-        list-style: none;
-        padding: 0;
-      }
-      li {
-        font-size: 1.35rem;
-        margin: 22px 0;
-        padding-left: 10px;
-        position: relative;
-      }
-      li::before {
-        content: "▹";
-        color: #60a5fa;
-        font-weight: bold;
-        position: absolute;
-        left: -24px;
-        font-size: 1.5rem;
-      }
-      .highlight {
-        background: rgba(34, 197, 94, 0.15);
-        padding: 28px;
-        border-radius: 14px;
-        border-left: 6px solid #22c55e;
+      .desc {
         font-size: 1.4rem;
-        margin: 40px 0;
-        text-align: center;
-        font-weight: 600;
+        line-height: 1.6;
+        color: #cbd5e1;
+      }
+      .public {
+        margin-top: 60px;
+        font-size: 2rem;
+        background: rgba(34, 197, 94, 0.2);
+        padding: 30px;
+        border-radius: 20px;
+        border: 2px solid #22c55e;
         color: #86efac;
+        font-weight: bold;
+        text-align: center;
       }
       .footer {
+        margin-top: 60px;
+        font-size: 1.3rem;
+        color: #94a3b8;
         text-align: center;
-        padding: 50px;
-        color: #64748b;
-        font-size: 1.2rem;
-      }
-      @media (max-width: 768px) {
-        h1 { font-size: 2.8rem; }
-        h2 { font-size: 2rem; }
-        li { font-size: 1.2rem; }
-        .highlight { font-size: 1.2rem; }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>Modern Chat</h1>
-      <p class="subtitle">All Features • Super Simple • 100% Public • Just Open & Chat</p>
+    <h1>Modern Chat Features</h1>
 
-      <div class="section">
-        <h2>All Features</h2>
-        <ul>
-          <li>Real-time chat — messages appear instantly for everyone</li>
-          <li>Pick any username you want (no signup ever)</li>
-          <li>Beautiful dark design with big readable text</li>
-          <li>Works perfectly on phone, tablet, and computer</li>
-          <li>Auto-scroll (you can turn it off too)</li>
-          <li>See exactly who’s online right now</li>
-          <li>Search users in the online list</li>
-          <li>Copy any message with one tap</li>
-          <li>Delete any message you sent</li>
-          <li>Delete ALL your messages instantly</li>
-          <li>Optional password to protect your username</li>
-          <li>Change password anytime</li>
-          <li>Works even if you close and reopen the page</li>
-        </ul>
+    <div class="grid">
+      <div class="box">
+        <div class="icon">💬</div>
+        <div class="title">Real-Time Chat</div>
+        <div class="desc">Messages appear instantly for everyone — no refresh needed!</div>
       </div>
 
-      <div class="section">
-        <h2>How to Start Chatting (30 seconds)</h2>
-        <ul>
-          <li>1. Type your favorite name in the box</li>
-          <li>2. Click “Save”</li>
-          <li>3. If it’s free → you own it!</li>
-          <li>4. Want to lock it? Click “Password” → set one (optional)</li>
-          <li>5. Type your message → press Enter or click Send</li>
-          <li>6. Done! Welcome to the chat</li>
-        </ul>
-
-        <div class="highlight">
-          No email • No account • No API key • No nonsense<br>
-          Just open this file and start chatting instantly!
-        </div>
+      <div class="box">
+        <div class="icon">👤</div>
+        <div class="title">Pick Any Username</div>
+        <div class="desc">Just type your name and start chatting — no signup, no email!</div>
       </div>
 
-      <div class="footer">
-        Made by Nishgamerr • Completely free • Public chat • Big text • Enjoy!
+      <div class="box">
+        <div class="icon">🔒</div>
+        <div class="title">Optional Password</div>
+        <div class="desc">Lock your username with a password so only you can use it</div>
       </div>
+
+      <div class="box">
+        <div class="icon">👥</div>
+        <div class="title">See Who’s Online</div>
+        <div class="desc">Live list shows everyone currently chatting</div>
+      </div>
+
+      <div class="box">
+        <div class="icon">🗑️</div>
+        <div class="title">Delete Your Messages</div>
+        <div class="desc">Remove any message or clear all your messages instantly</div>
+      </div>
+
+      <div class="box">
+        <div class="icon">📋</div>
+        <div class="title">One-Click Copy</div>
+        <div class="desc">Copy any message with a single tap</div>
+      </div>
+    </div>
+
+    <div class="public">
+      100% PUBLIC • NO API KEY • NO LOGIN • JUST OPEN & CHAT!
+    </div>
+
+    <div class="footer">
+      Made by Nishgamerr • Big text • Beautiful • Completely free
     </div>
   </body>
 </html>
