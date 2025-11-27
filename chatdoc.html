@@ -1,1 +1,194 @@
 
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Modern Chat - Features & Documentation</title>
+    <style>
+      body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #e2e8f0;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 20px;
+      }
+      h1 {
+        text-align: center;
+        font-size: 3.2rem;
+        background: linear-gradient(to right, #60a5fa, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 900;
+        margin-bottom: 12px;
+      }
+      .subtitle {
+        text-align: center;
+        font-size: 1.4rem;
+        color: #94a3b8;
+        margin-bottom: 50px;
+      }
+      .section {
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 32px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      h2 {
+        font-size: 2.2rem;
+        color: #60a5fa;
+        margin: 0 0 24px 0;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #334155;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        font-size: 1.25rem;
+        margin: 18px 0;
+        padding-left: 10px;
+        position: relative;
+      }
+      li::before {
+        content: "▹";
+        color: #60a5fa;
+        font-weight: bold;
+        position: absolute;
+        left: -20px;
+      }
+      .highlight {
+        background: rgba(96, 165, 250, 0.15);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #60a5fa;
+        font-size: 1.3rem;
+        margin: 30px 0;
+      }
+      .code {
+        background: #0f1724;
+        padding: 16px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        color: #a78bfa;
+        overflow-x: auto;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        padding: 40px;
+        color: #64748b;
+        font-size: 1.1rem;
+      }
+      @media (max-width: 768px) {
+        h1 { font-size: 2.6rem; }
+        h2 { font-size: 1.9rem; }
+        li { font-size: 1.15rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Modern Chat</h1>
+      <p class="subtitle">Full Features List & Documentation — Public Version (No API Key Needed)</p>
+
+      <div class="section">
+        <h2>Core Features</h2>
+        <ul>
+          <li>Real-time chat — messages appear instantly for everyone</li>
+          <li>No signup, no email, no account — just pick a username and chat</li>
+          <li>Beautiful modern dark UI with smooth animations</li>
+          <li>Fully responsive — works perfectly on mobile, tablet, and desktop</li>
+          <li>Auto-scroll with toggle option</li>
+          <li>Live online/offline user status indicator</li>
+          <li>See who's online in real time (with search)</li>
+          <li>One-click copy any message</li>
+          <li>Delete your own messages instantly</li>
+          <li>Delete ALL your messages with one button</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Username & Security</h2>
+        <ul>
+          <li>Choose any username you want</li>
+          <li>Optional password protection — secure your name so only you can use it</li>
+          <li>Change password anytime</li>
+          <li>Skip password and claim username freely</li>
+          <li>Login from any device with your password</li>
+          <li>Device recognition — auto-login on your regular devices</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Technical Details (Public & Safe)</h2>
+        <ul>
+          <li>Powered by Supabase (PostgreSQL + Realtime)</li>
+          <li>No API key exposed — uses only public anon key</li>
+          <li>All code runs in your browser</li>
+          <li>No tracking, no analytics, no cookies</li>
+          <li>Messages stored securely with Row Level Security</li>
+          <li>Presence system shows live user status</li>
+          <li>Connection status indicator (green/red dot)</li>
+        </ul>
+
+        <div class="highlight">
+          <strong>This is the FULL public version.</strong><br>
+          You can save this HTML file and open it anytime — it works 100% offline-first and connects directly to the public chat room.
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>How to Use</h2>
+        <ul>
+          <li>Open this HTML file in any browser</li>
+          <li>Type your desired username → click "Save"</li>
+          <li>If someone else has it with password → enter password to login</li>
+          <li>If free → claim it instantly (with or without password)</li>
+          <li>Start typing and press Enter or click Send</li>
+          <li>Click the eye icon to see who's online</li>
+          <li>Click trash icon on your message to delete</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Markdown-Style Quick Docs</h2>
+        <div class="code">
+# Modern Chat - Public Edition<br><br>
+A beautiful, fast, real-time global chat room<br>
+No signup • No API key • Just works<br><br>
+
+## Features<br>
+- Instant messaging<br>
+- Username claiming + optional password<br>
+- Live user presence<br>
+- Delete own messages<br>
+- Mobile friendly<br>
+- Copy messages<br>
+- Auto-scroll toggle<br><br>
+
+## How to run<br>
+1. Save this file as `chat.html`<br>
+2. Double-click to open in browser<br>
+3. Pick username → chat!<br><br>
+
+Enjoy the cleanest public chat on the internet.
+        </div>
+      </div>
+
+      <div class="footer">
+        Made with love by Nishgamerr • 100% Open • Real-time • Public • Forever Free
+      </div>
+    </div>
+  </body>
+</html>
