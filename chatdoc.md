@@ -1,7 +1,7 @@
 
 #Modern Chat
 
-##Full Features List & Documentation — Public Version (No API Key Needed)
+##Full Features List & Documentation — Public Version
 #Core Features
 
     Real-time chat — messages appear instantly for everyone
